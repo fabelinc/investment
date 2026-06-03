@@ -514,6 +514,7 @@ def render_earnings_setup(s):
     up_post= round((s["targetPost"]-s["entryPrice"])/s["entryPrice"]*100,1)
     chg_c = "#4ade80" if s["priceChange"]>=0 else "#f87171"
     strat_c={"BUY_NOW":"#4ade80","WAIT":"#fbbf24","AVOID":"#f87171"}.get(s.get("strategy","WAIT"),"#fbbf24")
+    strat_label={"BUY_NOW":"🟢 BUY NOW — sell before earnings","WAIT":"⏸ WAIT — mixed signals","AVOID":"🔴 AVOID"}.get(s.get("strategy","WAIT"),"⏸ WAIT")
 
     st.markdown(f"""
 <div style="background:#080f1a;border:1px solid #fbbf2444;border-left:3px solid #fbbf24;
@@ -533,8 +534,7 @@ def render_earnings_setup(s):
     </div>
     <div>
       <div style="font-size:14px;font-weight:700;color:{strat_c};margin-bottom:4px">
-        {{"BUY_NOW":"🟢 BUY NOW — sell before earnings","WAIT":"⏸ WAIT — mixed signals"}}
-        .get(s.get('strategy','WAIT'),'⏸ WAIT')}
+        {strat_label}
       </div>
       <div style="font-size:11px;color:#2a4560">
         Reports {s['earningsDate']} ·
