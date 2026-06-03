@@ -11,7 +11,7 @@ st.set_page_config(page_title="Signal Scanner", page_icon="📡", layout="wide")
 
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght=400;600;700;800&display=swap');
 html,body,[class*="css"]{font-family:'JetBrains Mono',monospace}
 .stApp{background:#03060d;color:#c8dff0}
 .block-container{padding:1.2rem 1.8rem}
@@ -33,18 +33,18 @@ hr{border-color:#0e1e35}
 
 # ── Universe ───────────────────────────────────────────────────────────────────
 UNIVERSE = {
-    "AI":         {"label":"AI & Chips",      "icon":"🤖","color":"#a78bfa",
-                   "leaders":["NVDA","AMD","MSFT"],
-                   "keywords":["nvidia","amd","artificial intelligence","ai","semiconductor","chip","gpu","data center","machine learning","llm","openai","generative"],
-                   "tier1":["NVDA","MSFT","GOOGL","AMZN","META"],
-                   "tier2":["AMD","CRM","NOW","PANW","ORCL","SNOW"],
-                   "tier3":["SMCI","DELL","MRVL","ANET","MU","WDC"]},
-    "RATES":      {"label":"Rates & Finance", "icon":"🏦","color":"#34d399",
-                   "leaders":["JPM","GS"],
-                   "keywords":["federal reserve","fed","interest rate","inflation","bond","yield","rate cut","rate hike","cpi","fomc","treasury","powell"],
-                   "tier1":["JPM","BAC","GS","V","MA"],
-                   "tier2":["AXP","BLK","SCHW","MS","COF"],
-                   "tier3":["ALLY","SYF"]},
+    "AI":       {"label":"AI & Chips",      "icon":"🤖","color":"#a78bfa",
+                 "leaders":["NVDA","AMD","MSFT"],
+                 "keywords":["nvidia","amd","artificial intelligence","ai","semiconductor","chip","gpu","data center","machine learning","llm","openai","generative"],
+                 "tier1":["NVDA","MSFT","GOOGL","AMZN","META"],
+                 "tier2":["AMD","CRM","NOW","PANW","ORCL","SNOW"],
+                 "tier3":["SMCI","DELL","MRVL","ANET","MU","WDC"]},
+    "RATES":    {"label":"Rates & Finance", "icon":"🏦","color":"#34d399",
+                 "leaders":["JPM","GS"],
+                 "keywords":["federal reserve","fed","interest rate","inflation","bond","yield","rate cut","rate hike","cpi","fomc","treasury","powell"],
+                 "tier1":["JPM","BAC","GS","V","MA"],
+                 "tier2":["AXP","BLK","SCHW","MS","COF"],
+                 "tier3":["ALLY","SYF"]},
     "HEALTHCARE": {"label":"Healthcare",      "icon":"💊","color":"#f87171",
                    "leaders":["JNJ","UNH"],
                    "keywords":["fda","approval","drug","clinical","trial","pharma","biotech","healthcare","medical","cancer","therapy","vaccine"],
@@ -195,7 +195,6 @@ def fetch_earnings_calendar(tickers, api_key):
 # ── Pure-data intelligence ────────────────────────────────────────────────────
 
 def detect_active_themes(prices):
-    """Find themes where leaders are moving significantly"""
     active = {}
     for key, theme in UNIVERSE.items():
         moves = [prices[l]["change"] for l in theme["leaders"] if l in prices]
@@ -206,7 +205,6 @@ def detect_active_themes(prices):
     return active
 
 def match_article_themes(headline, summary=""):
-    """Match a headline to themes via keywords"""
     text = (headline + " " + summary).lower()
     matched = []
     for key, theme in UNIVERSE.items():
@@ -216,9 +214,6 @@ def match_article_themes(headline, summary=""):
     return sorted(matched, key=lambda x: x[1], reverse=True)
 
 def score_article(article, prices, active_themes):
-    """
-    Optimized scoring engine to accurately catch high-quality news drops.
-    """
     ticker   = article["ticker"]
     headline = article["headline"]
     summary  = article.get("summary","")
@@ -231,10 +226,8 @@ def score_article(article, prices, active_themes):
     tier       = get_tier(ticker)
     risk       = RISK[tier]
 
-    # Initialize Score
-    score = 1  # Base point just for matching a core watchlisted company
+    score = 1 
 
-    # 1. Broadened Sentiment keywords (+/- text matching)
     bullish_kw = ["beat", "record", "surge", "upgrade", "buy", "win", "partnership", 
                   "expand", "growth", "profit", "above", "exceed", "acquire", "launch",
                   "approval", "dividend", "buyback", "top", "higher", "gains"]
@@ -245,75 +238,100 @@ def score_article(article, prices, active_themes):
     bull_hits = sum(1 for kw in bullish_kw if kw in text)
     bear_hits = sum(1 for kw in bearish_kw if kw in text)
 
-    # Determine direction based on heavy keyword clustering
     direction = "bullish" if bull_hits >= bear_hits else "bearish"
     sentiment_score = min(bull_hits if direction=="bullish" else bear_hits, 4)
     score += sentiment_score
 
-    # 2. High-impact conditional clusters (+3 points for huge catalysts)
     high_impact_kw = ["fda approval", "earnings", "revenue", "contract", "acquisition", "merger"]
     if any(kw in text for kw in high_impact_kw):
         score += 3
 
-    # 3. Volume Confirmation (High volume means institutional validity)
     vol_ratio = price_data.get("vol_ratio", 1.0)
     if vol_ratio >= 1.8:   score += 2
     elif vol_ratio >= 1.2: score += 1
 
-    # 4. FIX: Reward High Volatility Moves (Aligns with your strategy)
     chg = abs(price_data["change"])
-    if chg >= 2.5:   score += 3  # Massive news impact / high urgency
-    elif chg >= 1.0: score += 2  # Moderate news impact
-    else:            score += 1  # Slow bleed or minor news
+    if chg >= 2.5:   score += 3  
+    elif chg >= 1.0: score += 2  
+    else:            score += 1  
 
-    # 5. Theme leader momentum validation
     ticker_themes = get_themes_for_ticker(ticker)
     for th in ticker_themes:
         if th in active_themes:
             score += 1
             break
 
-    # Lower the gate threshold slightly so interesting articles can pass through
+    theme_matches = match_article_themes(headline, summary)
+    if theme_matches:
+        score += min(theme_matches[0][1], 2)
+
     if score < 3:
         return None
 
     impact_score = min(score, 10)
 
-    # --- Keep all your styling/variable formatting below the same ---
-    primary_theme = theme_matches[0][0] if match_article_themes(headline, summary) else (ticker_themes[0] if ticker_themes else "AI")
+    primary_theme = None
+    if theme_matches:
+        primary_theme = theme_matches[0][0]
+    elif ticker_themes:
+        primary_theme = ticker_themes[0]
+    else:
+        primary_theme = "AI"
+
     theme_info = UNIVERSE[primary_theme]
+
     entry  = price_data["price"]
     target = round(entry * (1 + risk["target"]/100), 2)
     stop   = round(entry * (1 - risk["stop"]/100), 2)
 
     hold_days = 3
-    if any(kw in text for kw in ["earnings","quarterly"]): hold_days = 1
-    if any(kw in text for kw in ["fda","approval","merger"]): hold_days = 5
+    if any(kw in text for kw in ["earnings","quarterly","annual"]):   hold_days = 1
+    if any(kw in text for kw in ["fda","approval","merger","acquisition"]): hold_days = 5
+    if any(kw in text for kw in ["contract","partnership","deal"]):   hold_days = 4
 
     confidence = "High" if impact_score >= 7 else "Medium" if impact_score >= 5 else "Low"
+
     category = "General"
-    if any(kw in text for kw in ["earnings","eps","revenue"]): category = "Earnings"
-    elif any(kw in text for kw in ["contract","deal","partnership"]): category = "Contract"
-    elif any(kw in text for kw in ["upgrade","downgrade","analyst"]): category = "Analyst"
+    if any(kw in text for kw in ["earnings","eps","revenue","quarterly"]): category = "Earnings"
+    elif any(kw in text for kw in ["contract","deal","partnership","agreement"]): category = "Contract"
+    elif any(kw in text for kw in ["upgrade","downgrade","target","analyst"]): category = "Analyst"
+    elif any(kw in text for kw in ["fda","approval","drug","trial"]): category = "Regulatory"
+    elif any(kw in text for kw in ["acquisition","merger","buys","acquires"]): category = "M&A"
+    elif any(kw in text for kw in ["buyback","dividend","repurchase"]): category = "Capital Return"
 
     reasoning = f"Detected actionable {category.lower()} catalyst. Volatility stands at {price_data['change']:.1f}% with solid {vol_ratio}x volume support."
     risk_text = f"Ensure short term {category.lower()} pressure does not compromise long term technical tier targets."
 
     return {
-        "id": f"{ticker}_{datetime.now().strftime('%H%M%S')}",
-        "ticker": ticker, "tier": tier, "theme": primary_theme,
-        "themeLabel": theme_info["label"], "themeIcon": theme_info["icon"], "themeColor": theme_info["color"],
-        "type": "DIRECT", "direction": direction, "impact_score": impact_score, "category": category,
-        "headline": headline, "source": article.get("source",""), "published": article.get("published",""),
-        "articleUrl": article.get("url",""), "reasoning": reasoning, "risk": risk_text, "confidence": confidence,
-        "entry_price": entry, "target_price": target, "stop_loss": stop, "hold_days": hold_days,
-        "livePrice": entry, "priceChange": price_data["change"], "vol_ratio": vol_ratio, "suggestedSize": risk["size"]
+        "id":           f"{ticker}_{datetime.now().strftime('%H%M%S')}",
+        "ticker":       ticker,
+        "tier":         tier,
+        "theme":        primary_theme,
+        "themeLabel":   theme_info["label"],
+        "themeIcon":    theme_info["icon"],
+        "themeColor":   theme_info["color"],
+        "type":         "DIRECT",
+        "direction":    direction,
+        "impact_score": impact_score,
+        "category":     category,
+        "headline":     headline,
+        "source":       article.get("source",""),
+        "published":    article.get("published",""),
+        "articleUrl":   article.get("url",""),
+        "reasoning":    reasoning,
+        "risk":         risk_text,
+        "confidence":   confidence,
+        "entry_price":  entry,
+        "target_price": target,
+        "stop_loss":    stop,
+        "hold_days":    hold_days,
+        "livePrice":    entry,
+        "priceChange":  price_data["change"],
+        "vol_ratio":    vol_ratio,
+        "suggestedSize":risk["size"],
     }
+
 def find_laggards(prices, active_themes):
-    """
-    For each active theme, find stocks that haven't priced in
-    the leader's move yet.
-    """
     laggards = []
     for theme_key, theme_data in active_themes.items():
         theme   = theme_data["theme"]
@@ -323,15 +341,14 @@ def find_laggards(prices, active_themes):
 
         direction = "bullish" if avg_move > 0 else "bearish"
 
-        # All non-leader stocks in this theme
         all_stocks = theme["tier1"]+theme["tier2"]+theme["tier3"]
         candidates = [t for t in all_stocks if t not in theme["leaders"] and t in prices]
 
         for ticker in candidates:
             p = prices[ticker]
-            gap = avg_move - p["change"]  # how much it's lagging
+            gap = avg_move - p["change"]  
 
-            if direction=="bullish" and gap < 1.5:  continue  # not lagging enough
+            if direction=="bullish" and gap < 1.5:  continue  
             if direction=="bearish" and gap > -1.5: continue
 
             tier    = get_tier(ticker)
@@ -341,7 +358,6 @@ def find_laggards(prices, active_themes):
             stop    = round(entry*(1-risk["stop"]/100), 2)
             lag_pct = abs(round(gap, 1))
 
-            # Score: bigger gap = higher score, volume spike helps
             score = min(3 + int(lag_pct) + (2 if p.get("vol_ratio",1)>=1.5 else 0), 9)
 
             leader_str = ", ".join(
@@ -382,30 +398,26 @@ def find_laggards(prices, active_themes):
     return sorted(laggards, key=lambda x: x["lag_gap"], reverse=True)
 
 def score_pre_earnings(upcoming, prices, finnhub_key):
-    """Score upcoming earnings using peer data and price action"""
     setups = []
     for u in upcoming[:8]:
         ticker = u["ticker"]
         if ticker not in prices:
             continue
 
-        p     = prices[ticker]
+        p   = prices[ticker]
         tier  = get_tier(ticker)
         risk  = RISK[tier]
         entry = p["price"]
 
-        # Find which themes this stock belongs to
         stock_themes = get_themes_for_ticker(ticker)
         if not stock_themes:
             continue
         primary_theme = stock_themes[0]
         theme = UNIVERSE[primary_theme]
 
-        # ── Score components ──────────────────────────────────────────────────
         score = 0
         signal_details = {}
 
-        # 1. Sector peer moves (read-through)
         peer_moves = [prices[l]["change"] for l in theme["leaders"]
                       if l in prices and l != ticker]
         if peer_moves:
@@ -419,7 +431,6 @@ def score_pre_earnings(upcoming, prices, finnhub_key):
         else:
             signal_details["Sector Read-through"] = {"score":5,"detail":"No peer data available"}
 
-        # 2. Price not moved (not priced in)
         if abs(p["change"]) < 0.5:
             score += 3
             signal_details["Price Not Moved"] = {"score":9,"detail":f"Stock flat at {p['change']:+.1f}% — opportunity not priced in"}
@@ -427,9 +438,9 @@ def score_pre_earnings(upcoming, prices, finnhub_key):
             score += 1
             signal_details["Price Not Moved"] = {"score":6,"detail":f"Modest move {p['change']:+.1f}% — partially priced in"}
         else:
+            score += 1
             signal_details["Price Not Moved"] = {"score":3,"detail":f"Already moved {p['change']:+.1f}% — partially priced in"}
 
-        # 3. Volume signal
         vol_ratio = p.get("vol_ratio",1.0)
         vol_score = min(int(vol_ratio*2), 8)
         score += min(vol_score, 3)
@@ -438,7 +449,6 @@ def score_pre_earnings(upcoming, prices, finnhub_key):
             "detail": f"Volume {vol_ratio}x average — {'institutional interest' if vol_ratio>=1.5 else 'normal activity'}"
         }
 
-        # 4. Days away (sweet spot is 3-7 days)
         days = u["days_away"]
         if 3 <= days <= 7:
             score += 2
@@ -450,7 +460,6 @@ def score_pre_earnings(upcoming, prices, finnhub_key):
             score += 1
             signal_details["Timing"] = {"score":5,"detail":f"{days} days — early positioning, more time for thesis to develop"}
 
-        # 5. EPS estimate exists (analyst coverage = confidence)
         if u.get("eps_est"):
             score += 1
             signal_details["Analyst Coverage"] = {"score":7,"detail":f"EPS estimate ${u['eps_est']:.2f} — active analyst coverage"}
@@ -460,7 +469,6 @@ def score_pre_earnings(upcoming, prices, finnhub_key):
         overall = min(score, 10)
         beat_prob = min(40 + overall*5, 90)
 
-        # Strategy
         if overall >= 7:   strategy, strat_label = "BUY_NOW", "🟢 BUY NOW — sell before earnings"
         elif overall >= 5: strategy, strat_label = "WAIT",    "⏸ WAIT — mixed signals"
         else:              strategy, strat_label = "AVOID",   "🔴 AVOID"
@@ -521,6 +529,7 @@ def price_box(label, value, color):
 def render_signal(sig):
     bull  = sig["direction"]=="bullish"
     dc    = "#4ade80" if bull else "#f87171"
+    tc    = {"1":"#4ade80","2":"#fbbf24","3":"#f87171"}._get(str(sig["tier"]),"#38bdf8") if hasattr({}, '_get') else "#38bdf8"
     tc    = {"1":"#4ade80","2":"#fbbf24","3":"#f87171"}.get(str(sig["tier"]),"#38bdf8")
     sc    = "#f87171" if sig["impact_score"]>=8 else "#fbbf24" if sig["impact_score"]>=6 else "#38bdf8"
     up    = round((sig["target_price"]-sig["entry_price"])/sig["entry_price"]*100,1)
@@ -584,304 +593,90 @@ def render_earnings_setup(s):
     up_pre = round((s["targetPre"]-s["entryPrice"])/s["entryPrice"]*100,1)
     up_post= round((s["targetPost"]-s["entryPrice"])/s["entryPrice"]*100,1)
     chg_c  = "#4ade80" if s["priceChange"]>=0 else "#f87171"
-    strat_c= {"BUY_NOW":"#4ade80","WAIT":"#2a4560","AVOID":"#f87171"}.get(s["strategy"],"#fbbf24")
+    strat_c= "#4ade80" if s["strategy"]=="BUY_NOW" else "#64748b"
 
-    st.markdown(f"""<div style="background:#080f1a;border:1px solid #fbbf2444;border-left:3px solid #fbbf24;border-radius:12px;padding:16px;margin-bottom:14px">
-      <div style="margin-bottom:10px">
-        {badge(RISK[s['tier']]['label'], tc)}
-        {badge(f"{s['themeIcon']} {s['themeLabel']}", s['themeColor'])}
-        {badge(f"📅 {s['days_away']}d to earnings", '#fbbf24')}
-        {badge(f"SCORE {s['overallScore']}/10", sc_col)}
-        {badge(f"BEAT PROB {s['beatProb']}%", '#4ade80' if s['beatProb']>=70 else '#fbbf24')}
-      </div>
-      <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
-        <div style="background:{tc}15;border:1px solid {tc}44;border-radius:8px;padding:8px 14px;text-align:center;min-width:64px;flex-shrink:0">
-          <div style="font-size:18px;font-weight:900;color:{tc}">{s['ticker']}</div>
-          <div style="font-size:9px;color:{tc};letter-spacing:1px">T{s['tier']}</div>
+    st.markdown(f"""<div style="background:#080f1a;border:1px solid #0e1e35;border-radius:12px;padding:16px;margin-bottom:14px">
+        <div style="margin-bottom:10px">
+            {badge(f"TIER {s['tier']}", tc)}
+            {badge(f"{s['themeIcon']} {s['themeLabel']}", s['themeColor'])}
+            {badge(s['stratLabel'], strat_c)}
+            {badge(f"SCORE {s['overallScore']}/10", sc_col)}
         </div>
-        <div style="flex:1">
-          <div style="font-size:14px;font-weight:700;color:{strat_c};margin-bottom:4px">{s['stratLabel']}</div>
-          <div style="font-size:11px;color:#2a4560">Reports {s['date']} · Not priced in: <span style="color:{'#4ade80' if s['priceNotMoved'] else '#f87171'}">{'✓ YES' if s['priceNotMoved'] else '✗ NO'}</span>{'  · EPS Est: $'+str(s['epsEst']) if s['epsEst'] else ''}</div>
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
+            <div style="background:#0e1e35;border:1px solid #38bdf844;border-radius:8px;padding:8px 14px;text-align:center;min-width:64px">
+                <div style="font-size:18px;font-weight:900;color:#38bdf8">{s['ticker']}</div>
+                <div style="font-size:9px;color:#2a4560;letter-spacing:1px">{s['days_away']}d away</div>
+            </div>
+            <div style="flex:1;font-size:13px;color:#e2e8f0;line-height:1.5">
+                {s['reasoning']}
+            </div>
         </div>
-      </div>
-      <div style="background:#0e1e35;border-radius:8px;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <div><div style="font-size:9px;color:#2a4560;letter-spacing:2px;margin-bottom:2px">LIVE PRICE</div><div style="font-size:20px;font-weight:900;color:#e2e8f0">${s['livePrice']}</div></div>
-        <div style="text-align:center"><div style="font-size:9px;color:#2a4560;letter-spacing:2px;margin-bottom:2px">TODAY</div><div style="font-size:16px;font-weight:700;color:{chg_c}">{'+' if s['priceChange']>=0 else ''}{s['priceChange']}%</div></div>
-        <div style="text-align:right"><div style="font-size:9px;color:#2a4560;letter-spacing:2px;margin-bottom:2px">NOT PRICED IN</div><div style="font-size:16px;font-weight:700;color:{'#4ade80' if s['priceNotMoved'] else '#f87171'}">{'✓ YES' if s['priceNotMoved'] else '✗ NO'}</div></div>
-      </div>
+        <div style="background:#060d1a;border:1px solid #0e1e35;border-radius:8px;padding:10px;font-size:11px;color:#475569;margin-bottom:10px">
+            ⚠ {s['risk']}
+        </div>
     </div>""", unsafe_allow_html=True)
-
+    
     c1,c2,c3,c4 = st.columns(4)
-    c1.markdown(price_box("ENTRY",         f"${s['entryPrice']}", "#e2e8f0"), unsafe_allow_html=True)
-    c2.markdown(price_box("PRE-EARN TGT",  f"${s['targetPre']}",  "#4ade80"), unsafe_allow_html=True)
-    c3.markdown(price_box("POST-EARN TGT", f"${s['targetPost']}", "#fbbf24"), unsafe_allow_html=True)
-    c4.markdown(price_box("STOP LOSS",     f"${s['stopLoss']}",   "#f87171"), unsafe_allow_html=True)
-
-    cc1,cc2 = st.columns(2)
-    cc1.markdown(f"""<div style="background:#4ade8008;border:1px solid #4ade8022;border-radius:8px;padding:12px;text-align:center;margin-top:8px">
-        <div style="font-size:9px;color:#2a4560;margin-bottom:4px">CONSERVATIVE EXIT</div>
-        <div style="font-size:24px;font-weight:900;color:#4ade80">+{up_pre}%</div>
-        <div style="font-size:10px;color:#2a4560">sell day before earnings</div>
-    </div>""", unsafe_allow_html=True)
-    cc2.markdown(f"""<div style="background:#fbbf2408;border:1px solid #fbbf2422;border-radius:8px;padding:12px;text-align:center;margin-top:8px">
-        <div style="font-size:9px;color:#2a4560;margin-bottom:4px">AGGRESSIVE EXIT</div>
-        <div style="font-size:24px;font-weight:900;color:#fbbf24">+{up_post}%</div>
-        <div style="font-size:10px;color:#2a4560">hold through earnings</div>
-    </div>""", unsafe_allow_html=True)
-
-    with st.expander("📊 Signal Scorecard"):
-        for label, sig in s["signals"].items():
-            score = sig["score"]
-            col = "#4ade80" if score>=7 else "#fbbf24" if score>=5 else "#f87171"
-            st.progress(score/10, text=f"**{label}**: {score}/10 — {sig['detail']}")
-
-    st.markdown(f"""
-    <div style="background:#060d1a;border-radius:7px;padding:10px 14px;border:1px solid #0e1e35;margin:10px 0;font-size:12px;color:#475569;line-height:1.6">
-      💡 {s['reasoning']}
-    </div>
-    <div style="font-size:11px;color:#1e3a5f;margin-bottom:10px">⚠ {s['risk']}</div>
-    <div style="background:#4ade8008;border:1px solid #4ade8020;border-radius:8px;padding:12px 14px;margin-bottom:8px;font-size:12px;color:#e2e8f0;line-height:2;font-family:'JetBrains Mono',monospace">
-      <div style="font-size:10px;color:#4ade80;letter-spacing:2px;font-weight:700;margin-bottom:8px">📋 TRADE PLAN</div>
-      <span style="color:#4ade80;font-weight:700">BUY</span> {s['ticker']} @ <strong>${s['entryPrice']}</strong> now<br>
-      Conservative: Sell <span style="color:#fbbf24;font-weight:700">day before earnings</span> → <span style="color:#4ade80">${s['targetPre']}</span> (+{up_pre}%)<br>
-      Aggressive:   Hold through → <span style="color:#fbbf24">${s['targetPost']}</span> (+{up_post}%)<br>
-      Stop-loss: <span style="color:#f87171;font-weight:700">${s['stopLoss']}</span> · Size: <span style="color:#38bdf8;font-weight:700">{s['suggestedSize']}</span>
-    </div>""", unsafe_allow_html=True)
+    c1.markdown(price_box("ENTRY", f"${s['entryPrice']}", "#e2e8f0"), unsafe_allow_html=True)
+    c2.markdown(price_box("RUN-UP TARGET", f"${s['targetPre']} (+{up_pre}%)", "#38bdf8"), unsafe_allow_html=True)
+    c3.markdown(price_box("POST TARGET", f"${s['targetPost']} (+{up_post}%)", "#4ade80"), unsafe_allow_html=True)
+    c4.markdown(price_box("CRASH STOP", f"${s['stopLoss']}", "#f87171"), unsafe_allow_html=True)
     st.markdown("---")
 
-# ── Main layout ────────────────────────────────────────────────────────────────
-st.markdown("""
-<div style="display:flex;align-items:center;gap:12px;margin-bottom:4px">
-  <div style="width:10px;height:10px;border-radius:50%;background:#4ade80;box-shadow:0 0 12px #4ade80;animation:pulse 2s infinite"></div>
-  <span style="font-size:11px;color:#4ade80;letter-spacing:3px">SIGNAL SCANNER · FREE · NO AI API REQUIRED</span>
-</div>
-<h1 style="font-size:26px;font-weight:900;color:#e2e8f0;margin:0 0 4px 0">Theme Intelligence · Laggard Detection</h1>
-<p style="color:#2a4560;font-size:12px;margin:0 0 20px 0">Finnhub news · yfinance prices · rule-based scoring · 8 themes · 60+ quality stocks · zero AI cost</p>
-""", unsafe_allow_html=True)
-
-# ── Sidebar ────────────────────────────────────────────────────────────────────
-st.sidebar.markdown("## ⚙️ Settings")
-finnhub_key = st.sidebar.text_input("Finnhub API Key:", type="password",
-    help="Free at finnhub.io — needed for news + earnings calendar")
-
-st.sidebar.markdown("---")
-st.sidebar.markdown("**Tier Filter**")
-show_t1 = st.sidebar.checkbox("🟢 Tier 1 — Blue Chip ($500)", value=True)
-show_t2 = st.sidebar.checkbox("🟡 Tier 2 — Growth ($375)",    value=True)
-show_t3 = st.sidebar.checkbox("🔴 Tier 3 — Dynamic ($250)",   value=False)
-
-st.sidebar.markdown("---")
-st.sidebar.markdown("**Min Impact Score**")
-min_score = st.sidebar.slider("", 1, 9, 4)
-
-st.sidebar.markdown("---")
-st.sidebar.markdown("**Theme Filter**")
-show_themes = {k: st.sidebar.checkbox(f"{v['icon']} {v['label']}", value=True)
-               for k,v in UNIVERSE.items()}
-
-st.sidebar.markdown("---")
-st.sidebar.caption("💡 No Anthropic key needed — all analysis done with rules + math")
-
-# ── Load prices (always) ───────────────────────────────────────────────────────
-with st.spinner("Loading live prices…"):
-    prices = fetch_prices(ALL_TICKERS)
-
-# ── Leader ticker strip ────────────────────────────────────────────────────────
-leaders = ["NVDA","AAPL","MSFT","GOOGL","AMZN","META","TSLA","AMD","JPM","XOM"]
-cols = st.columns(len(leaders))
-for i,t in enumerate(leaders):
-    p = prices.get(t)
-    if p:
-        cols[i].metric(t, f"${p['price']}", f"{'+' if p['change']>=0 else ''}{p['change']}%")
-
-st.markdown("---")
-
-# ── Detect active themes immediately from price data ───────────────────────────
-active_themes = detect_active_themes(prices)
-if active_themes:
-    st.markdown("**🔥 Active Themes (from price moves):**")
-    tcols = st.columns(min(len(active_themes),4))
-    for i,(k,td) in enumerate(active_themes.items()):
-        m = td["avg_move"]
-        c = "#4ade80" if m>0 else "#f87171"
-        tcols[i%4].markdown(f"""<div style="background:{c}10;border:1px solid {c}33;border-radius:8px;padding:8px 10px;text-align:center;margin-bottom:8px">
-            <div style="font-size:18px">{td['theme']['icon']}</div>
-            <div style="font-size:11px;font-weight:700;color:{c}">{td['theme']['label']}</div>
-            <div style="font-size:13px;color:{c};font-family:'JetBrains Mono',monospace">{'+' if m>0 else ''}{m}%</div>
-        </div>""", unsafe_allow_html=True)
-
-# ── Tabs ───────────────────────────────────────────────────────────────────────
-tab_signals, tab_laggards, tab_earnings, tab_news, tab_prices = st.tabs([
-    "📡 SIGNALS", "⏳ LAGGARDS", "📅 EARNINGS", "📰 NEWS", "💹 PRICES"
-])
-
-# ── SIGNALS TAB ───────────────────────────────────────────────────────────────
-with tab_signals:
-    st.markdown("#### News-based signals — scored by rules, no AI cost")
+# ── Main Execution App Loop ───────────────────────────────────────────────────
+def main():
+    st.title("📡 SIGNAL SCANNER TERMINAL")
+    st.sidebar.header("CONFIGURATION")
+    
+    finnhub_key = st.sidebar.text_input("FINNHUB API KEY", type="password", value="")
+    
     if not finnhub_key:
-        st.warning("Add your Finnhub API key in the sidebar to fetch news signals")
-    else:
-        if st.button("⟳  SCAN NEWS SIGNALS", use_container_width=True):
-            tickers_to_scan = list(set(
-                t for k,td in active_themes.items()
-                for tier in ["tier1","tier2","tier3"]
-                for t in td["theme"][tier]
-            ))[:12] or [t for theme in UNIVERSE.values() for t in theme["tier1"]]
+        st.info("Please enter your Finnhub API key in the sidebar to stream direct and laggard signals.")
+        return
 
-            with st.spinner("Fetching Finnhub news…"):
-                articles = fetch_finnhub_news(tickers_to_scan, finnhub_key)
+    with st.spinner("Syncing data feeds across ticker matrix..."):
+        prices = fetch_prices(ALL_TICKERS)
+        if not prices:
+            st.error("Failed to query market pricing feeds from yfinance setup.")
+            return
+            
+        active_themes = detect_active_themes(prices)
+        news_articles = fetch_finnhub_news(ALL_TICKERS, finnhub_key)
+        earnings_cal  = fetch_earnings_calendar(ALL_TICKERS, finnhub_key)
 
-            if not articles:
-                st.info("No recent news found. Try expanding to more tickers or check your Finnhub key.")
-            else:
-                tiers_ok  = ([1] if show_t1 else[])+([2] if show_t2 else[])+([3] if show_t3 else[])
-                themes_ok = [k for k,v in show_themes.items() if v]
+    tab1, tab2, tab3 = st.tabs(["⚡ DIRECT CATALYSTS", "⏳ THEMATIC LAGGARDS", "🏦 PRE-EARNINGS STRATEGIES"])
 
-                signals = []
-                for art in articles:
-                    sig = score_article(art, prices, active_themes)
-                    if sig and sig["tier"] in tiers_ok and sig["theme"] in themes_ok and sig["impact_score"]>=min_score:
-                        signals.append(sig)
-
-                signals.sort(key=lambda x: x["impact_score"], reverse=True)
-                signals = signals[:10]  # top 10
-
-                if not signals:
-                    st.info(f"No signals scored above {min_score}/10 with current filters. Lower the min score in the sidebar.")
-                else:
-                    st.success(f"✓ {len(signals)} signals from {len(articles)} articles — {sum(1 for s in signals if s['impact_score']>=7)} high impact")
-                    for sig in signals:
-                        render_signal(sig)
-
-# ── LAGGARDS TAB ──────────────────────────────────────────────────────────────
-with tab_laggards:
-    st.markdown("#### Stocks lagging their theme leaders — pure price math")
-    if not active_themes:
-        st.info("No themes strongly active right now (leaders need >1.5% move). Check back when the market is moving.")
-    else:
-        laggards = find_laggards(prices, active_themes)
-        tiers_ok  = ([1] if show_t1 else[])+([2] if show_t2 else[])+([3] if show_t3 else[])
-        themes_ok = [k for k,v in show_themes.items() if v]
-        laggards  = [l for l in laggards if l["tier"] in tiers_ok and l["theme"] in themes_ok and l["impact_score"]>=min_score]
-
-        if not laggards:
-            st.info("No laggards found with current filters. All theme stocks moving together today.")
+    with tab1:
+        st.subheader("Real-Time Event Momentum")
+        direct_signals = []
+        for art in news_articles:
+            sig = score_article(art, prices, active_themes)
+            if sig:
+                direct_signals.append(sig)
+                
+        if direct_signals:
+            for sig in direct_signals:
+                render_signal(sig)
         else:
-            st.success(f"✓ {len(laggards)} laggard opportunities identified — no news needed, pure price gap analysis")
-            for lag in laggards:
+            st.info("No major volatility catalysts cleared the scoring framework threshold.")
+
+    with tab2:
+        st.subheader("Sector Dislocation & Catch-Up Plays")
+        laggard_signals = find_laggards(prices, active_themes)
+        if laggard_signals:
+            for lag in laggard_signals:
                 render_signal(lag)
-
-# ── EARNINGS TAB ──────────────────────────────────────────────────────────────
-with tab_earnings:
-    st.markdown("#### Pre-earnings setups — scored with peer data, no AI needed")
-    if not finnhub_key:
-        st.warning("Add your Finnhub API key in the sidebar to fetch the earnings calendar")
-    else:
-        if st.button("⟳  SCAN EARNINGS CALENDAR", use_container_width=True):
-            with st.spinner("Fetching upcoming earnings from Finnhub…"):
-                upcoming = fetch_earnings_calendar(ALL_TICKERS, finnhub_key)
-
-            if not upcoming:
-                st.info("No upcoming earnings found for watched stocks in the next 14 days.")
-            else:
-                st.success(f"✓ {len(upcoming)} upcoming earnings found")
-                with st.spinner("Scoring setups with peer price data…"):
-                    setups = score_pre_earnings(upcoming, prices, finnhub_key)
-
-                if not setups:
-                    st.info("No strong pre-earnings setups (all scored below threshold or marked AVOID).")
-                else:
-                    st.success(f"✓ {len(setups)} pre-earnings setups scored")
-                    for s in setups:
-                        render_earnings_setup(s)
         else:
-            st.markdown("""<div style="background:#080f1a;border:1px solid #0e1e35;border-radius:12px;padding:20px;font-size:13px;color:#2a4560;line-height:2.2">
-                <div style="font-weight:700;color:#e2e8f0;margin-bottom:10px">How scoring works (no AI):</div>
-                ✓ <strong style="color:#c8dff0">Sector read-through</strong> — are theme leaders already moving?<br>
-                ✓ <strong style="color:#c8dff0">Price not moved</strong> — is the opportunity still open?<br>
-                ✓ <strong style="color:#c8dff0">Volume signal</strong> — institutional interest showing?<br>
-                ✓ <strong style="color:#c8dff0">Timing</strong> — 3-7 days is the ideal positioning window<br>
-                ✓ <strong style="color:#c8dff0">Analyst coverage</strong> — EPS estimate = active coverage<br>
-            </div>""", unsafe_allow_html=True)
+            st.info("No core sector laggards detected with significant leader gaps.")
 
-# ── NEWS TAB ──────────────────────────────────────────────────────────────────
-with tab_news:
-    st.markdown("#### Raw Finnhub headlines — unscored, unfiltered")
-    if not finnhub_key:
-        st.warning("Add your Finnhub API key in the sidebar")
-    else:
-        news_ticker = st.selectbox("Select ticker:", ["ALL"]+sorted(ALL_TICKERS))
-        if st.button("⟳  FETCH NEWS", use_container_width=True):
-            tickers = ALL_TICKERS if news_ticker=="ALL" else [news_ticker]
-            with st.spinner("Fetching headlines…"):
-                articles = fetch_finnhub_news(tickers[:10], finnhub_key, days_back=3)
+    with tab3:
+        st.subheader("Asymmetric Run-Up Formations")
+        earnings_setups = score_pre_earnings(earnings_cal, prices, finnhub_key)
+        if earnings_setups:
+            for setup in earnings_setups:
+                render_earnings_setup(setup)
+        else:
+            st.info("No liquid earnings run-up setups matched requirements inside the 14-day window.")
 
-            if not articles:
-                st.info("No recent news found.")
-            else:
-                st.success(f"✓ {len(articles)} headlines")
-                for a in articles:
-                    p = prices.get(a["ticker"],{})
-                    chg = p.get("change",0)
-                    chg_c = "#4ade80" if chg>=0 else "#f87171"
-                    themes = match_article_themes(a["headline"], a.get("summary",""))
-                    theme_str = " ".join(f"{UNIVERSE[t]['icon']}" for t,_ in themes[:2])
-
-                    st.markdown(f"""<div style="background:#080f1a;border:1px solid #0e1e35;border-radius:8px;padding:12px 14px;margin-bottom:8px">
-                      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
-                        <div style="flex:1">
-                          <div style="margin-bottom:6px">
-                            {badge(a['ticker'], '#38bdf8')}
-                            {badge(f"{'+' if chg>=0 else ''}{chg}%", chg_c)}
-                            {f'<span style="font-size:14px">{theme_str}</span>' if theme_str else ''}
-                          </div>
-                          <div style="font-size:13px;font-weight:600;color:#c8dff0;line-height:1.4;margin-bottom:4px">
-                            {"<a href='"+a['url']+"' target='_blank' style='color:#c8dff0;text-decoration:none'>"+a['headline']+"</a>" if a.get('url') else a['headline']}
-                          </div>
-                          <div style="font-size:11px;color:#2a4560">{a['source']} · {a['published']}</div>
-                          {f"<div style='font-size:11px;color:#334155;margin-top:6px;line-height:1.5'>{a['summary'][:200]}…</div>" if a.get('summary') else ''}
-                        </div>
-                      </div>
-                    </div>""", unsafe_allow_html=True)
-
-# ── PRICES TAB ────────────────────────────────────────────────────────────────
-with tab_prices:
-    st.markdown("#### Live prices — all quality stocks")
-    theme_filter = st.selectbox("Theme:", ["ALL"]+[f"{v['icon']} {v['label']}" for v in UNIVERSE.values()])
-    tier_filter  = st.radio("Tier:", ["All","Tier 1","Tier 1+2"], horizontal=True)
-
-    filtered = ALL_TICKERS
-    if theme_filter!="ALL":
-        icon = theme_filter.split(" ")[0]
-        for k,v in UNIVERSE.items():
-            if v["icon"]==icon:
-                filtered = v["tier1"]+v["tier2"]+v["tier3"]
-                break
-    if tier_filter=="Tier 1":
-        filtered = [t for t in filtered if get_tier(t)==1]
-    elif tier_filter=="Tier 1+2":
-        filtered = [t for t in filtered if get_tier(t)<=2]
-
-    rows = []
-    for t in filtered:
-        p = prices.get(t)
-        if p:
-            tier = get_tier(t)
-            tkey,tinfo = [(k,v) for k,v in UNIVERSE.items()
-                          if t in v["tier1"]+v["tier2"]+v["tier3"]][0] if get_themes_for_ticker(t) else ("AI",UNIVERSE["AI"])
-            rows.append({
-                "Ticker": t,
-                "Tier":   f"T{tier}",
-                "Theme":  tinfo["icon"]+" "+tinfo["label"],
-                "Price":  f"${p['price']}",
-                "Change": f"{'+' if p['change']>=0 else ''}{p['change']}%",
-                "Vol":    f"{p.get('vol_ratio',1.0)}x",
-                "High":   f"${p.get('high',p['price'])}",
-                "Low":    f"${p.get('low',p['price'])}",
-            })
-
-    if rows:
-        df = pd.DataFrame(rows)
-        st.dataframe(df, use_container_width=True, hide_index=True)
-    else:
-        st.info("No price data loaded yet.")
+if __name__ == "__main__":
+    main()
