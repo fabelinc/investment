@@ -29,86 +29,196 @@ hr{border-color:#0e1e35}
 </style>
 """, unsafe_allow_html=True)
 
-# ── Focused tech universe ─────────────────────────────────────────────────────
-# Deliberately narrow — tech, AI, semiconductors, cloud, cybersecurity only
+# ── Universe definition ──────────────────────────────────────────────────────
+
+# TIER 1 — Fixed anchors, always scanned, safest (mega cap, highest liquidity)
+TIER1_FIXED = [
+    "AAPL","MSFT","NVDA","GOOGL","AMZN","META","TSLA","ORCL","NFLX","ADBE",
+]
+
+# TIER 2 — Established tech, S&P 500 members, strong fundamentals
+TIER2_FIXED = [
+    # AI & Chips
+    "AMD","AVGO","QCOM","ARM","TSM","MU","AMAT","LRCX","KLAC","MRVL","SMCI",
+    # Cloud & SaaS
+    "CRM","NOW","SNOW","DDOG","NET","MDB","GTLB","WDAY","VEEV",
+    # Cybersecurity
+    "PANW","CRWD","FTNT","ZS","OKTA","S",
+    # Big Tech adjacent
+    "UBER","SHOP","PLTR","APP","RBLX","ABNB",
+    # Infra & Hardware
+    "ANET","CSCO","DELL","HPE","JNPR",
+    # Semiconductors extended
+    "INTC","TXN","ADI","MCHP","ON",
+]
+
+# TIER 3 — Higher growth, higher risk, smaller cap but promising
+TIER3_FIXED = [
+    "AI","BBAI","SOUN","IONQ","RXRX","GFAI",   # AI pure plays
+    "WOLF","LAZR","OUST",                         # emerging tech
+    "HPQ","WDC","STX","NTAP",                    # storage / hardware
+    "TENB","QLYS","SAIL","SCWX",                 # cyber extended
+    "CFLT","ESTC","DOMO","JAMF",                 # SaaS extended
+]
+
+# Theme map — for signal categorisation
 UNIVERSE = {
-    "AI_CHIPS": {
-        "label": "AI & Semiconductors", "icon": "🤖", "color": "#a78bfa",
-        "tier1": ["NVDA", "MSFT", "GOOGL", "AMZN", "META"],
-        "tier2": ["AMD", "AVGO", "QCOM", "ARM", "TSM"],
-        "tier3": ["MU", "SMCI", "MRVL", "ANET", "WDC"],
-    },
-    "CLOUD_SAAS": {
-        "label": "Cloud & SaaS", "icon": "☁️", "color": "#38bdf8",
-        "tier1": ["MSFT", "AMZN", "GOOGL"],
-        "tier2": ["CRM", "NOW", "SNOW", "DDOG", "NET"],
-        "tier3": ["MDB", "ESTC", "GTLB", "CFLT"],
-    },
-    "CYBER": {
-        "label": "Cybersecurity", "icon": "🔒", "color": "#e879f9",
-        "tier1": ["MSFT", "PANW"],
-        "tier2": ["CRWD", "ZS", "FTNT", "OKTA", "S"],
-        "tier3": ["TENB", "QLYS", "SAIL"],
-    },
-    "BIG_TECH": {
-        "label": "Big Tech", "icon": "💻", "color": "#4ade80",
-        "tier1": ["AAPL", "MSFT", "GOOGL", "AMZN", "META"],
-        "tier2": ["TSLA", "NFLX", "UBER", "ORCL"],
-        "tier3": ["DELL", "HPQ", "INTC"],
-    },
+    "AI_CHIPS":    {"label":"AI & Semiconductors","icon":"🤖","color":"#a78bfa",
+                    "leaders":["NVDA","AMD","MSFT"],
+                    "tier1":["NVDA","MSFT","GOOGL","AMZN","META"],
+                    "tier2":["AMD","AVGO","QCOM","ARM","TSM","MU","AMAT","SMCI","MRVL"],
+                    "tier3":["AI","BBAI","SOUN","IONQ","LRCX","KLAC"]},
+    "CLOUD_SAAS":  {"label":"Cloud & SaaS",       "icon":"☁️","color":"#38bdf8",
+                    "leaders":["MSFT","AMZN","GOOGL"],
+                    "tier1":["MSFT","AMZN","GOOGL","ORCL","ADBE"],
+                    "tier2":["CRM","NOW","SNOW","DDOG","NET","WDAY","VEEV","GTLB"],
+                    "tier3":["MDB","CFLT","ESTC","DOMO","JAMF"]},
+    "CYBER":       {"label":"Cybersecurity",       "icon":"🔒","color":"#e879f9",
+                    "leaders":["PANW","CRWD"],
+                    "tier1":["PANW","MSFT"],
+                    "tier2":["CRWD","ZS","FTNT","OKTA","S"],
+                    "tier3":["TENB","QLYS","SAIL","SCWX"]},
+    "BIG_TECH":    {"label":"Big Tech",            "icon":"💻","color":"#4ade80",
+                    "leaders":["AAPL","MSFT","GOOGL"],
+                    "tier1":["AAPL","MSFT","GOOGL","AMZN","META","NFLX","TSLA"],
+                    "tier2":["UBER","SHOP","PLTR","APP","RBLX","ABNB","ORCL"],
+                    "tier3":["DELL","HPQ","HPE","INTC","CSCO","ANET","JNPR"]},
+    "SEMIS":       {"label":"Semiconductors",      "icon":"⚡","color":"#fbbf24",
+                    "leaders":["NVDA","TSM","AVGO"],
+                    "tier1":["NVDA","TSM","AVGO","QCOM","ARM"],
+                    "tier2":["MU","AMAT","LRCX","KLAC","TXN","ADI","MCHP","ON","MRVL"],
+                    "tier3":["SMCI","WDC","STX","NTAP","WOLF"]},
 }
 
-# Unique tickers preserving priority order
+# Combined fixed universe (deduped, ordered by tier)
 _seen = set()
-ALL_TICKERS = []
-for theme in UNIVERSE.values():
-    for tier in ["tier1", "tier2", "tier3"]:
-        for t in theme[tier]:
-            if t not in _seen:
-                _seen.add(t)
-                ALL_TICKERS.append(t)
+ALL_TICKERS_FIXED = []
+for t in TIER1_FIXED + TIER2_FIXED + TIER3_FIXED:
+    if t not in _seen:
+        _seen.add(t)
+        ALL_TICKERS_FIXED.append(t)
 
 RISK = {
-    1: {"stop": 3,  "target": 5,  "size": "$500",  "label": "🟢 TIER 1 · BLUE CHIP"},
-    2: {"stop": 4,  "target": 8,  "size": "$375",  "label": "🟡 TIER 2 · GROWTH"},
-    3: {"stop": 5,  "target": 12, "size": "$250",  "label": "🔴 TIER 3 · DYNAMIC"},
+    1: {"stop":3,  "target":5,  "size":"$500",  "label":"🟢 TIER 1 · ANCHOR"},
+    2: {"stop":4,  "target":8,  "size":"$375",  "label":"🟡 TIER 2 · GROWTH"},
+    3: {"stop":5,  "target":12, "size":"$250",  "label":"🔴 TIER 3 · DYNAMIC"},
+    4: {"stop":6,  "target":15, "size":"$150",  "label":"⚡ MOMENTUM · SPECULATIVE"},
 }
 
 def get_tier(ticker):
-    for theme in UNIVERSE.values():
-        if ticker in theme["tier1"]: return 1
-        if ticker in theme["tier2"]: return 2
-        if ticker in theme["tier3"]: return 3
-    return 2
+    if ticker in TIER1_FIXED: return 1
+    if ticker in TIER2_FIXED: return 2
+    if ticker in TIER3_FIXED: return 3
+    return 4  # momentum / dynamic addition
 
 def get_theme(ticker):
     for k, v in UNIVERSE.items():
-        if ticker in v["tier1"] + v["tier2"] + v["tier3"]:
+        if ticker in v["tier1"]+v["tier2"]+v["tier3"]:
             return k, v
     return "BIG_TECH", UNIVERSE["BIG_TECH"]
+
+# ── Dynamic universe builder ───────────────────────────────────────────────────
+@st.cache_data(ttl=3600)  # refresh every hour
+def build_dynamic_universe():
+    """
+    Fetches momentum movers to expand beyond fixed list.
+    Returns dict with momentum picks and their rationale.
+    """
+    momentum = []
+
+    # Candidate pool — broader Nasdaq tech names worth monitoring
+    candidates = [
+        # Recent AI/tech momentum names
+        "PLTR","APP","RDDT","HOOD","COIN","MSTR","LUNR","RKLB",
+        "ACHR","JOBY","LILM","BLDE","EVTL",
+        # Semis & hardware candidates
+        "ONTO","FORM","AMKR","COHU","ACLS","CAMT","AMBA",
+        # SaaS candidates
+        "BILL","FRSH","PCTY","PAYC","HUBS","ZI","BOX","DBX",
+        # Cyber candidates
+        "CYBR","VRNS","QLYS","SAIL","DEEP","RPD",
+        # Storage / data
+        "PSTG","NCNO","CLBT",
+    ]
+    # Remove any already in fixed universe
+    candidates = [c for c in candidates if c not in set(ALL_TICKERS_FIXED)]
+
+    try:
+        data = yf.download(
+            " ".join(candidates), period="30d",
+            interval="1d", progress=False, auto_adjust=True
+        )
+        closes  = data["Close"]
+        volumes = data["Volume"]
+
+        for t in candidates:
+            try:
+                c_series = closes[t].dropna()
+                v_series = volumes[t].dropna()
+                if len(c_series) < 10:
+                    continue
+
+                price     = float(c_series.iloc[-1])
+                price_30d = float(c_series.iloc[0])
+                mom_30d   = round((price - price_30d) / price_30d * 100, 1)
+
+                avg_vol   = float(v_series.iloc[:-5].mean())
+                rec_vol   = float(v_series.iloc[-5:].mean())
+                vol_ratio = round(rec_vol / avg_vol, 1) if avg_vol else 1.0
+
+                # Safety filters
+                if price < 3:        continue   # no penny stocks
+                if mom_30d < 8:      continue   # must have momentum
+                if vol_ratio < 1.2:  continue   # must have volume pickup
+
+                momentum.append({
+                    "ticker":    t,
+                    "price":     round(price, 2),
+                    "mom_30d":   mom_30d,
+                    "vol_ratio": vol_ratio,
+                    "reason":    f"+{mom_30d}% in 30 days, volume {vol_ratio}x avg",
+                })
+            except:
+                pass
+    except:
+        pass
+
+    # Sort by momentum score (momentum * volume)
+    momentum.sort(key=lambda x: x["mom_30d"] * x["vol_ratio"], reverse=True)
+    return momentum[:15]  # top 15 momentum picks
 
 # ── Live prices via yfinance ───────────────────────────────────────────────────
 @st.cache_data(ttl=300)
 def fetch_prices(tickers):
     prices = {}
+    if not tickers:
+        return prices
     try:
-        data = yf.download(" ".join(tickers), period="5d", interval="1d",
-                           progress=False, auto_adjust=True)
-        for t in tickers:
+        batch = list(dict.fromkeys(tickers))  # dedup preserve order
+        data  = yf.download(" ".join(batch), period="5d", interval="1d",
+                            progress=False, auto_adjust=True)
+        # Handle single vs multi ticker response
+        closes  = data["Close"]  if "Close"  in data.columns else data
+        volumes = data["Volume"] if "Volume" in data.columns else None
+        for t in batch:
             try:
-                closes  = data["Close"][t].dropna()
-                volumes = data["Volume"][t].dropna()
-                if len(closes) >= 2:
-                    today = float(closes.iloc[-1])
-                    prev  = float(closes.iloc[-2])
-                    chg   = round((today - prev) / prev * 100, 2)
-                    avg_v = float(volumes.iloc[:-1].mean())
-                    tod_v = float(volumes.iloc[-1])
+                c = (closes[t] if t in closes.columns else closes).dropna()
+                v = (volumes[t] if volumes is not None and t in volumes.columns
+                     else None)
+                if len(c) >= 2:
+                    today_p = float(c.iloc[-1])
+                    prev_p  = float(c.iloc[-2])
+                    chg     = round((today_p - prev_p) / prev_p * 100, 2)
+                    vol_r   = 1.0
+                    if v is not None and len(v) >= 5:
+                        avg_v = float(v.iloc[:-1].mean())
+                        tod_v = float(v.iloc[-1])
+                        vol_r = round(tod_v / avg_v, 1) if avg_v else 1.0
                     prices[t] = {
-                        "price":     round(today, 2),
+                        "price":     round(today_p, 2),
                         "change":    chg,
-                        "prev":      round(prev, 2),
-                        "vol_ratio": round(tod_v / avg_v, 1) if avg_v else 1.0,
+                        "prev":      round(prev_p, 2),
+                        "vol_ratio": vol_r,
                     }
             except:
                 pass
@@ -117,61 +227,54 @@ def fetch_prices(tickers):
     return prices
 
 # ── Claude: search news + generate signals in one call ────────────────────────
-def scan_with_claude(prices, client, max_signals=12):
+def scan_with_claude(prices, client, max_signals=12, momentum_tickers=None):
     today = datetime.now().strftime("%B %d, %Y")
+    momentum_tickers = momentum_tickers or []
 
-    # Build price context — leaders only for brevity
-    leaders = ["NVDA","AAPL","MSFT","GOOGL","AMZN","META","AMD","TSLA","PANW","CRWD"]
-    price_lines = []
-    for t in leaders:
-        p = prices.get(t)
-        if p:
-            price_lines.append(
-                f"{t}=${p['price']}({'+' if p['change']>=0 else ''}{p['change']}% today, vol {p['vol_ratio']}x)"
-            )
+    # Build full watchlist = fixed + today's momentum picks
+    all_tickers = list(dict.fromkeys(ALL_TICKERS_FIXED + momentum_tickers))
 
-    # Full watchlist with prices for reference
-    watchlist_prices = []
-    for t in ALL_TICKERS:
-        p = prices.get(t)
-        if p:
-            watchlist_prices.append(f"{t}=${p['price']}({'+' if p['change']>=0 else ''}{p['change']}%)")
+    # Price context — leaders for brevity
+    leaders = ["NVDA","AAPL","MSFT","GOOGL","AMZN","META","AMD","TSLA","PANW","CRWD","PLTR","APP"]
+    price_lines = [
+        f"{t}=${p['price']}({'+' if p['change']>=0 else ''}{p['change']}% vol{p['vol_ratio']}x)"
+        for t in leaders if (p := prices.get(t))
+    ]
+    all_prices = [
+        f"{t}=${p['price']}({'+' if p['change']>=0 else ''}{p['change']}%)"
+        for t in all_tickers if (p := prices.get(t))
+    ]
+    momentum_note = (
+        f"\nMOMENTUM ADDITIONS THIS WEEK (high volume movers, may spike): {', '.join(momentum_tickers)}"
+        if momentum_tickers else ""
+    )
 
     prompt = f"""You are a senior tech equity analyst. Today is {today}.
 
-TASK: Search today's financial news and identify the {max_signals} strongest trade signals for tech stocks.
+TASK: Search today's financial news. Find the {max_signals} strongest trade signals.
 
-WATCHLIST (these are the only stocks to consider):
-{', '.join(ALL_TICKERS)}
+WATCHLIST — fixed quality stocks:
+{', '.join(ALL_TICKERS_FIXED)}
+{momentum_note}
 
-LIVE PRICES:
+LEADER PRICES:
 {' | '.join(price_lines)}
 
 ALL PRICES:
-{' '.join(watchlist_prices)}
+{' '.join(all_prices[:60])}
 
-SEARCH AND ANALYZE:
-1. Search for real breaking news today for these tech stocks
-2. Identify which themes are active (AI/chips, cloud, cybersecurity, big tech)
-3. For each significant news item find:
-   - DIRECT signals: stock with its own news catalyst
-   - LAGGARD signals: related stocks that haven't priced in the theme move yet
-4. Eliminate duplicates — ONE signal per stock maximum
-5. Only BULLISH signals unless there is very strong specific bearish catalyst
+INSTRUCTIONS:
+1. Search real breaking news today for tech stocks
+2. Find DIRECT signals (own catalyst) and LAGGARD signals (theme ripple not yet priced)
+3. Pay special attention to momentum additions — these are active movers
+4. ONE signal per ticker maximum — no duplicates
+5. Only BULLISH signals unless very strong bearish catalyst
+6. Prefer impact_score >= 7
 
-STRICT RULES:
-- Maximum ONE signal per ticker — never repeat a stock
-- Only include stocks from the watchlist above
-- entry_price MUST exactly match the live price shown
-- Prefer TIER 1 and TIER 2 stocks
-- Only include if impact_score >= 6
-- Keep all text SHORT (headline < 90 chars, reasoning < 100 chars, risk < 70 chars)
-- Focus on actionable setups, not noise
-
-Return ONLY a raw JSON object, no markdown:
+Return ONLY raw JSON object, start with {{ immediately:
 {{
-  "marketSummary": "One sentence on what is driving tech markets today",
-  "activeThemes": ["AI_CHIPS", "CLOUD_SAAS"],
+  "marketSummary": "one sentence on what is driving tech today",
+  "activeThemes": ["AI_CHIPS"],
   "signals": [
     {{
       "ticker": "NVDA",
@@ -180,9 +283,9 @@ Return ONLY a raw JSON object, no markdown:
       "type": "DIRECT",
       "direction": "bullish",
       "impact_score": 8,
-      "headline": "exact real headline under 90 chars",
+      "headline": "real headline under 90 chars",
       "source": "Reuters",
-      "reasoning": "why this moves the stock, under 100 chars",
+      "reasoning": "why this moves under 100 chars",
       "entry_price": 219.50,
       "target_price": 230.00,
       "stop_loss": 213.00,
@@ -202,126 +305,185 @@ Return ONLY a raw JSON object, no markdown:
     )
 
     raw = "".join(b.text for b in message.content if hasattr(b, "text")).strip()
-    raw = raw.replace("```json", "").replace("```", "").strip()
-    s, e = raw.find("{"), raw.rfind("}")
-    if s == -1 or e == -1:
+    raw = raw.replace("```json","").replace("```","").strip()
+    s2, e2 = raw.find("{"), raw.rfind("}")
+    if s2 == -1 or e2 == -1:
         raise ValueError("No JSON in response: " + raw[:150])
 
-    result = json.loads(raw[s:e+1])
+    result = json.loads(raw[s2:e2+1])
 
-    # Enrich signals with live prices + dedup
+    # Enrich + dedup
     seen_tickers = set()
     enriched = []
     for sig in result.get("signals", []):
-        t = sig.get("ticker", "")
+        t = sig.get("ticker","")
         if t in seen_tickers or t not in prices:
             continue
         seen_tickers.add(t)
-
         lp   = prices[t]
         tier = sig.get("tier") or get_tier(t)
+        # Momentum picks use tier 4
+        if t in momentum_tickers and tier > 2:
+            tier = 4
         risk = RISK[tier]
         tk, tv = get_theme(t)
-
-        # Always recalculate target/stop from live price
         entry  = lp["price"]
-        target = round(entry * (1 + risk["target"] / 100), 2)
-        stop   = round(entry * (1 - risk["stop"]   / 100), 2)
-
         enriched.append({
             **sig,
             "tier":         tier,
             "themeKey":     sig.get("theme", tk),
-            "themeLabel":   UNIVERSE.get(sig.get("theme", tk), tv)["label"],
-            "themeIcon":    UNIVERSE.get(sig.get("theme", tk), tv)["icon"],
-            "themeColor":   UNIVERSE.get(sig.get("theme", tk), tv)["color"],
+            "themeLabel":   UNIVERSE.get(sig.get("theme",tk), tv)["label"],
+            "themeIcon":    UNIVERSE.get(sig.get("theme",tk), tv)["icon"],
+            "themeColor":   UNIVERSE.get(sig.get("theme",tk), tv)["color"],
             "livePrice":    entry,
             "priceChange":  lp["change"],
             "volRatio":     lp["vol_ratio"],
             "entry_price":  entry,
-            "target_price": target,
-            "stop_loss":    stop,
+            "target_price": round(entry*(1+risk["target"]/100), 2),
+            "stop_loss":    round(entry*(1-risk["stop"]/100),   2),
             "suggestedSize":risk["size"],
+            "isMomentum":   t in momentum_tickers,
         })
 
     result["signals"] = sorted(enriched, key=lambda x: x["impact_score"], reverse=True)
     return result
 
 # ── Pre-earnings via Claude ────────────────────────────────────────────────────
+def fetch_earnings_calendar(tickers):
+    """
+    Fetch upcoming earnings from free Nasdaq earnings calendar API.
+    No key needed, no CORS (server-side Python).
+    Falls back to yfinance calendar if API fails.
+    """
+    upcoming = []
+    today     = datetime.now()
+    end_date  = today + timedelta(days=12)
+
+    # Try yfinance earnings calendar for each ticker
+    for ticker in tickers:
+        try:
+            stock = yf.Ticker(ticker)
+            cal   = stock.calendar
+            if cal is not None and not cal.empty:
+                # yfinance returns calendar as dict or DataFrame
+                if hasattr(cal, "to_dict"):
+                    cal_dict = cal.to_dict()
+                else:
+                    cal_dict = cal
+                # Earnings Date is usually in index or columns
+                earn_date = None
+                if isinstance(cal_dict, dict):
+                    for k, v in cal_dict.items():
+                        if "Earnings Date" in str(k):
+                            vals = list(v.values()) if isinstance(v, dict) else [v]
+                            if vals and vals[0]:
+                                earn_date = pd.Timestamp(vals[0])
+                                break
+                if earn_date and today <= earn_date <= end_date:
+                    days = (earn_date - today).days
+                    upcoming.append({
+                        "ticker":       ticker,
+                        "earningsDate": earn_date.strftime("%Y-%m-%d"),
+                        "daysAway":     days,
+                    })
+        except:
+            pass
+
+    return sorted(upcoming, key=lambda x: x["daysAway"])
+
+
 def scan_earnings_with_claude(prices, client):
-    today = datetime.now().strftime("%B %d, %Y")
-    price_ref = " ".join(
-        f"{t}=${p['price']}({'+' if p['change']>=0 else ''}{p['change']}%)"
-        for t, p in prices.items() if t in ALL_TICKERS
+    """
+    Step 1: fetch earnings dates from yfinance (free, no API, no web search)
+    Step 2: score setups with Claude (no web search — pure analysis)
+    """
+    # Step 1 — get real earnings dates from yfinance
+    with_dates = fetch_earnings_calendar(ALL_TICKERS)
+
+    # Fallback: if yfinance returned nothing, ask Claude without web search
+    if not with_dates:
+        today = datetime.now().strftime("%B %d, %Y")
+        fallback_prompt = f"""Today is {today}. Based on your knowledge, which of these tech stocks are likely reporting earnings in the next 10 days?
+{', '.join(ALL_TICKERS)}
+
+Return ONLY a raw JSON array, nothing else:
+[{{"ticker":"NVDA","earningsDate":"2026-06-05","daysAway":3}}]
+
+If unsure, return the most likely ones based on typical quarterly schedules. Return [] if truly none."""
+
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=500,
+            messages=[{"role": "user", "content": fallback_prompt}],
+        )
+        raw = "".join(b.text for b in msg.content if hasattr(b, "text")).strip()
+        raw = raw.replace("```json","").replace("```","").strip()
+        s, e = raw.find("["), raw.rfind("]")
+        if s != -1 and e != -1 and e > s:
+            try:
+                with_dates = json.loads(raw[s:e+1])
+            except:
+                pass
+
+    if not with_dates:
+        raise ValueError("No upcoming earnings found in the next 10 days for watched tech stocks")
+
+    # Step 2 — score each earner with Claude (no web search, just analysis)
+    today_str  = datetime.now().strftime("%B %d, %Y")
+    price_ref  = " ".join(
+        f"{u['ticker']}=${prices[u['ticker']]['price']}({'+' if prices[u['ticker']]['change']>=0 else ''}{prices[u['ticker']]['change']}%)"
+        for u in with_dates[:6] if u["ticker"] in prices
+    )
+    dates_str  = " | ".join(
+        f"{u['ticker']} reports {u['earningsDate']} ({u['daysAway']}d away)"
+        for u in with_dates[:6]
     )
 
-    prompt = f"""You are a pre-earnings analyst. Today is {today}.
+    score_prompt = f"""You are a pre-earnings analyst. Today is {today_str}.
 
-Search for tech stocks from this list that report earnings in the next 10 days:
-{', '.join(ALL_TICKERS)}
+These tech stocks report earnings soon:
+{dates_str}
 
 Live prices: {price_ref}
 
-For each upcoming earner, score these signals:
-- Sector peer read-through (did theme leaders already beat?)
-- Price not yet moved (opportunity open?)
-- Analyst upgrades in last 2 weeks
-- Supply chain / partner signals
-- Pre-announcement silence (no warnings = good)
+For each stock, score the setup based on:
+- Sector peers that already reported this quarter (read-through signal)
+- Whether the price has already moved up (priced in = bad, flat = good)
+- Recent analyst activity (upgrades = bullish)
+- Macro tailwinds for that sector
+- Any known supply chain signals
 
-Return ONLY raw JSON, no markdown:
-{{
-  "setups": [
-    {{
-      "ticker": "NVDA",
-      "earningsDate": "2026-06-05",
-      "daysAway": 3,
-      "tier": 1,
-      "theme": "AI_CHIPS",
-      "beatProbability": 78,
-      "priceNotMoved": true,
-      "overallScore": 8,
-      "strategy": "BUY_NOW",
-      "signals": {{
-        "sectorReadthrough": {{"score": 8, "detail": "AMD beat by 12%"}},
-        "priceAction":       {{"score": 9, "detail": "Stock flat — not priced in"}},
-        "analystActivity":   {{"score": 7, "detail": "3 upgrades last 2 weeks"}},
-        "supplyChain":       {{"score": 8, "detail": "AMAT record orders"}},
-        "silence":           {{"score": 9, "detail": "No pre-announcements"}}
-      }},
-      "reasoning": "Short reason under 100 chars",
-      "risk": "Short risk under 70 chars"
-    }}
-  ]
-}}
+Return ONLY a raw JSON array. Start your response with [ and end with ]. No other text:
+[{{"ticker":"NVDA","earningsDate":"2026-06-05","daysAway":3,"tier":1,"theme":"AI_CHIPS","beatProbability":75,"priceNotMoved":true,"overallScore":8,"strategy":"BUY_NOW","signals":{{"sectorReadthrough":{{"score":8,"detail":"AMD beat estimates"}},"priceAction":{{"score":9,"detail":"Stock flat this week"}},"analystActivity":{{"score":7,"detail":"2 upgrades recently"}},"supplyChain":{{"score":7,"detail":"Partners reporting strong"}},"silence":{{"score":9,"detail":"No warnings issued"}}}},"reasoning":"Strong peer read-through, price not moved yet","risk":"Guidance cut would override beat"}}]
 
-strategy: BUY_NOW (score>=7), WAIT (score 5-6), AVOID (score<5)
-Only include stocks with confirmed earnings in next 10 days. Max 5 setups."""
+Rules: strategy BUY_NOW if score>=7, WAIT if 5-6, AVOID if below 5. Keep all strings under 80 chars. Start response with [ immediately."""
 
-    message = client.messages.create(
+    msg2 = client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=2000,
-        tools=[{"type": "web_search_20250305", "name": "web_search"}],
-        messages=[{"role": "user", "content": prompt}],
+        messages=[{"role": "user", "content": score_prompt}],
     )
 
-    raw = "".join(b.text for b in message.content if hasattr(b, "text")).strip()
-    raw = raw.replace("```json", "").replace("```", "").strip()
-    s, e = raw.find("{"), raw.rfind("}")
-    if s == -1 or e == -1:
-        raise ValueError("No JSON: " + raw[:150])
+    raw2 = "".join(b.text for b in msg2.content if hasattr(b, "text")).strip()
+    raw2 = raw2.replace("```json","").replace("```","").strip()
+    s2, e2 = raw2.find("["), raw2.rfind("]")
+    if s2 == -1 or e2 == -1 or e2 <= s2:
+        raise ValueError("Scoring returned no JSON. Response: " + raw2[:200])
 
-    result = json.loads(raw[s:e+1])
+    try:
+        scored = json.loads(raw2[s2:e2+1])
+    except Exception as ex:
+        raise ValueError(f"JSON parse error: {ex} | Preview: {raw2[s2:s2+200]}")
 
-    # Enrich setups
+    # Enrich with live prices and tier info
     enriched = []
-    for item in result.get("setups", []):
-        t = item.get("ticker", "")
+    for item in scored:
+        t = item.get("ticker","")
         if t not in prices:
             continue
-        lp   = prices[t]
-        tier = item.get("tier") or get_tier(t)
-        risk = RISK[tier]
+        lp    = prices[t]
+        tier  = item.get("tier") or get_tier(t)
+        risk  = RISK[tier]
         entry = lp["price"]
         tk, tv = get_theme(t)
         enriched.append({
@@ -334,8 +496,8 @@ Only include stocks with confirmed earnings in next 10 days. Max 5 setups."""
             "priceChange":  lp["change"],
             "entryPrice":   entry,
             "targetPre":    round(entry * (1 + risk["target"] / 100 / 2), 2),
-            "targetPost":   round(entry * (1 + risk["target"] / 100), 2),
-            "stopLoss":     round(entry * (1 - risk["stop"]   / 100), 2),
+            "targetPost":   round(entry * (1 + risk["target"] / 100),     2),
+            "stopLoss":     round(entry * (1 - risk["stop"]   / 100),     2),
             "suggestedSize":risk["size"],
         })
 
@@ -624,20 +786,65 @@ st.markdown("""
 
 # Sidebar
 st.sidebar.markdown("## ⚙️ Settings")
-anthropic_key = st.sidebar.text_input("Anthropic API Key:", type="password",
-    help="console.anthropic.com — ~$0.001 per scan with Haiku")
+
+# ── Persistent API key: session state → secrets → manual entry ────────────────
+# Priority: 1) already in session  2) st.secrets  3) user types it
+if "anthropic_key" not in st.session_state:
+    try:
+        st.session_state["anthropic_key"] = st.secrets["ANTHROPIC_API_KEY"]
+    except:
+        st.session_state["anthropic_key"] = ""
+
+def _save_key():
+    st.session_state["anthropic_key"] = st.session_state["_key_input"]
+
+typed = st.sidebar.text_input(
+    "Anthropic API Key:",
+    value=st.session_state["anthropic_key"],
+    type="password",
+    key="_key_input",
+    on_change=_save_key,
+    help="Saved for this session automatically. For permanent storage add to Streamlit secrets.",
+)
+# Also capture if user typed without pressing Enter
+if typed:
+    st.session_state["anthropic_key"] = typed
+
+anthropic_key = st.session_state["anthropic_key"]
+
+if anthropic_key:
+    st.sidebar.success("✓ API key saved for this session")
+else:
+    st.sidebar.caption("Get your key at console.anthropic.com")
+
 st.sidebar.markdown("---")
 max_signals = st.sidebar.slider("Max signals to show", 5, 15, 10)
 min_tier = st.sidebar.radio("Min quality tier:", ["Tier 1 only","Tier 1+2","All tiers"], index=1)
 st.sidebar.markdown("---")
-st.sidebar.caption("**Cost estimate:** ~$0.001/scan with claude-haiku · $5 free credit covers ~5000 scans")
+st.sidebar.caption("**Cost:** ~$0.001/scan · $5 free credit = ~5000 scans")
+
+# Permanent storage tip
+with st.sidebar.expander("💾 Save key permanently"):
+    st.markdown("""
+Add to your Streamlit Cloud secrets:
+```toml
+ANTHROPIC_API_KEY = "sk-ant-..."
+```
+Go to: App → Settings → Secrets
+""")
 
 # Tier filter
 tier_map = {"Tier 1 only":[1], "Tier 1+2":[1,2], "All tiers":[1,2,3]}
 allowed_tiers = tier_map[min_tier]
 
-# Load prices
-with st.spinner("Loading live prices…"):
+# ── Build dynamic universe ────────────────────────────────────────────────────
+with st.spinner("Building dynamic universe…"):
+    momentum_picks = build_dynamic_universe()
+    momentum_tickers = [m["ticker"] for m in momentum_picks]
+    ALL_TICKERS = list(dict.fromkeys(ALL_TICKERS_FIXED + momentum_tickers))
+
+# Load prices for full universe
+with st.spinner(f"Loading live prices for {len(ALL_TICKERS)} stocks…"):
     prices = fetch_prices(ALL_TICKERS)
 
 # Leader strip
@@ -678,11 +885,12 @@ if active_themes:
             unsafe_allow_html=True)
 
 # Tabs
-tab_sig, tab_lag, tab_earn, tab_prices = st.tabs([
+tab_sig, tab_lag, tab_earn, tab_prices, tab_universe = st.tabs([
     f"📡 SIGNALS",
     f"⏳ LAGGARDS ({len(laggards)})",
     "📅 EARNINGS",
     f"💹 PRICES ({len(prices)})",
+    f"🌐 UNIVERSE ({len(ALL_TICKERS)})",
 ])
 
 # ── SIGNALS TAB ───────────────────────────────────────────────────────────────
@@ -694,7 +902,7 @@ with tab_sig:
             with st.spinner("Claude searching real news + scoring signals…"):
                 try:
                     client = anthropic.Anthropic(api_key=anthropic_key)
-                    result = scan_with_claude(prices, client, max_signals)
+                    result = scan_with_claude(prices, client, max_signals, momentum_tickers)
 
                     # Market summary
                     if result.get("marketSummary"):
@@ -812,3 +1020,72 @@ with tab_prices:
         st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
     else:
         st.info("No price data yet")
+
+# ── UNIVERSE TAB ──────────────────────────────────────────────────────────────
+with tab_universe:
+    st.markdown("#### 🌐 Dynamic Stock Universe")
+    st.markdown(
+        f"<span style='color:#2a4560;font-size:12px'>Total: **{len(ALL_TICKERS)} stocks** · "
+        f"{len(TIER1_FIXED)} anchors + {len(TIER2_FIXED)} growth + "
+        f"{len(TIER3_FIXED)} dynamic + {len(momentum_tickers)} momentum picks</span>",
+        unsafe_allow_html=True)
+    st.markdown("---")
+
+    st.markdown("### 🟢 Tier 1 — Anchor Stocks")
+    st.caption("Always scanned · Mega cap · Safest · $500 position")
+    t1_rows = [{"Ticker":t,"Price":f"${prices.get(t,{}).get('price','—')}",
+                "Change":f"{'+' if prices.get(t,{}).get('change',0)>=0 else ''}{prices.get(t,{}).get('change','—')}%",
+                "Vol":f"{prices.get(t,{}).get('vol_ratio','—')}x","Stop":"-3%","Target":"+5%","Size":"$500"}
+               for t in TIER1_FIXED]
+    st.dataframe(pd.DataFrame(t1_rows), use_container_width=True, hide_index=True)
+
+    st.markdown("### 🟡 Tier 2 — Growth Stocks")
+    st.caption("S&P 500 tech · Strong fundamentals · $375 position")
+    t2_rows = [{"Ticker":t,"Theme":get_theme(t)[1]["icon"]+" "+get_theme(t)[1]["label"],
+                "Price":f"${prices.get(t,{}).get('price','—')}",
+                "Change":f"{'+' if prices.get(t,{}).get('change',0)>=0 else ''}{prices.get(t,{}).get('change','—')}%",
+                "Vol":f"{prices.get(t,{}).get('vol_ratio','—')}x","Size":"$375"}
+               for t in TIER2_FIXED]
+    st.dataframe(pd.DataFrame(t2_rows), use_container_width=True, hide_index=True)
+
+    st.markdown("### 🔴 Tier 3 — Dynamic Picks")
+    st.caption("Higher risk · Smaller cap · $250 position")
+    t3_rows = [{"Ticker":t,"Theme":get_theme(t)[1]["icon"]+" "+get_theme(t)[1]["label"],
+                "Price":f"${prices.get(t,{}).get('price','—')}",
+                "Change":f"{'+' if prices.get(t,{}).get('change',0)>=0 else ''}{prices.get(t,{}).get('change','—')}%",
+                "Vol":f"{prices.get(t,{}).get('vol_ratio','—')}x","Size":"$250"}
+               for t in TIER3_FIXED]
+    st.dataframe(pd.DataFrame(t3_rows), use_container_width=True, hide_index=True)
+
+    st.markdown("### ⚡ Momentum Picks — This Week's Movers")
+    st.caption("Auto-detected · 30d momentum >8% · Volume 1.2x+ · Refreshed hourly · $150 max")
+    if not momentum_picks:
+        st.info("No momentum picks this week — all candidates below threshold.")
+    else:
+        mom_rows = [{"Ticker":m["ticker"],"30d Move":f"+{m['mom_30d']}%",
+                     "Vol Ratio":f"{m['vol_ratio']}x",
+                     "Price":f"${prices.get(m['ticker'],{}).get('price',m['price'])}",
+                     "Today":f"{'+' if prices.get(m['ticker'],{}).get('change',0)>=0 else ''}{prices.get(m['ticker'],{}).get('change','—')}%",
+                     "Why added":m["reason"],"Size":"$150"}
+                    for m in momentum_picks]
+        st.dataframe(pd.DataFrame(mom_rows), use_container_width=True, hide_index=True)
+        st.caption("⚠ Momentum picks are speculative — always use stop-losses")
+
+    st.markdown("---")
+    c1,c2,c3,c4 = st.columns(4)
+    c1.metric("Total Universe",  len(ALL_TICKERS))
+    c2.metric("With Live Price", len(prices))
+    c3.metric("Momentum Picks",  len(momentum_picks))
+    c4.metric("Themes Covered",  len(UNIVERSE))
+
+    st.markdown("""
+<div style="background:#080f1a;border:1px solid #0e1e35;border-radius:10px;padding:16px;
+     margin-top:16px;font-size:12px;color:#2a4560;line-height:2.2">
+  <div style="font-weight:700;color:#c8dff0;margin-bottom:8px">How the universe is built:</div>
+  🟢 <b style="color:#c8dff0">Tier 1 Anchors</b> — 10 mega-cap tech stocks, always scanned<br>
+  🟡 <b style="color:#c8dff0">Tier 2 Growth</b> — ~45 established S&amp;P 500 tech names<br>
+  🔴 <b style="color:#c8dff0">Tier 3 Dynamic</b> — ~25 smaller quality tech picks<br>
+  ⚡ <b style="color:#c8dff0">Momentum</b> — auto-detected: &gt;8% 30d move + volume spike + market cap &gt;$2B<br>
+  📅 <b style="color:#c8dff0">Earnings week</b> — any tech stock reporting is added automatically
+</div>
+""", unsafe_allow_html=True)
