@@ -1,4 +1,5 @@
 import streamlit as st
+import requests
 import yfinance as yf
 import anthropic
 import json
@@ -227,7 +228,7 @@ def fetch_prices(tickers):
     return prices
 
 # ── Claude: search news + generate signals in one call ────────────────────────
-def scan_with_claude(prices, client, max_signals=12, momentum_tickers=None):
+def scan_with_claude(prices, client, max_signals=12, momentum_tickers=None, news_articles=None):
     today = datetime.now().strftime("%B %d, %Y")
     momentum_tickers = momentum_tickers or []
 
@@ -249,13 +250,24 @@ def scan_with_claude(prices, client, max_signals=12, momentum_tickers=None):
         if momentum_tickers else ""
     )
 
+    # Format pre-fetched RSS news for Claude
+    news_lines = ""
+    if news_articles:
+        news_lines = "\nREAL NEWS HEADLINES (from RSS feeds, fetched now):\n"
+        news_lines += "\n".join(
+            f"- [{a['ticker']}] {a['headline']} ({a['source']})"
+            for a in news_articles[:20]
+        )
+
     prompt = f"""You are a senior tech equity analyst. Today is {today}.
 
-TASK: Search today's financial news. Find the {max_signals} strongest trade signals.
+TASK: Analyse the news headlines below and identify the {max_signals} strongest trade signals.
+Do NOT search the web — use only the headlines provided plus your market knowledge.
 
 WATCHLIST — fixed quality stocks:
-{', '.join(ALL_TICKERS_FIXED)}
+{', '.join(ALL_TICKERS_FIXED[:40])}
 {momentum_note}
+{news_lines}
 
 LEADER PRICES:
 {' | '.join(price_lines)}
@@ -264,9 +276,9 @@ ALL PRICES:
 {' '.join(all_prices[:60])}
 
 INSTRUCTIONS:
-1. Search real breaking news today for tech stocks
-2. Find DIRECT signals (own catalyst) and LAGGARD signals (theme ripple not yet priced)
-3. Pay special attention to momentum additions — these are active movers
+1. Use the news headlines above to find DIRECT signals (own catalyst)
+2. Find LAGGARD signals — stocks in same theme not yet moved
+3. If no strong news, use price momentum and volume as signals
 4. ONE signal per ticker maximum — no duplicates
 5. Only BULLISH signals unless very strong bearish catalyst
 6. Prefer impact_score >= 7
@@ -300,7 +312,6 @@ Return ONLY raw JSON object, start with {{ immediately:
     message = client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=3000,
-        tools=[{"type": "web_search_20250305", "name": "web_search"}],
         messages=[{"role": "user", "content": prompt}],
     )
 
@@ -390,6 +401,92 @@ def fetch_earnings_calendar(tickers):
             pass
 
     return sorted(upcoming, key=lambda x: x["daysAway"])
+
+
+
+# ── Free RSS news fetch (no API cost) ────────────────────────────────────────
+@st.cache_data(ttl=600)
+def fetch_rss_news(tickers):
+    """
+    Fetch real financial news from free RSS feeds.
+    No API key, no cost, no CORS issue (server-side Python).
+    """
+    import xml.etree.ElementTree as ET
+
+    feeds = [
+        "https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}&region=US&lang=en-US",
+        "https://feeds.marketwatch.com/marketwatch/realtimeheadlines/",
+        "https://feeds.Reuters.com/reuters/businessNews",
+    ]
+
+    articles = []
+    seen_headlines = set()
+
+    # Per-ticker Yahoo Finance RSS
+    for ticker in tickers[:20]:
+        try:
+            url = f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}&region=US&lang=en-US"
+            r   = requests.get(url, timeout=5,
+                               headers={"User-Agent":"Mozilla/5.0"})
+            if r.status_code == 200:
+                root = ET.fromstring(r.content)
+                for item in root.findall(".//item")[:3]:
+                    title = item.findtext("title","").strip()
+                    link  = item.findtext("link","").strip()
+                    desc  = item.findtext("description","").strip()[:200]
+                    pub   = item.findtext("pubDate","").strip()
+                    if title and title not in seen_headlines:
+                        seen_headlines.add(title)
+                        articles.append({
+                            "ticker":    ticker,
+                            "headline":  title,
+                            "source":    "Yahoo Finance",
+                            "url":       link,
+                            "summary":   desc,
+                            "published": pub,
+                        })
+        except:
+            pass
+
+    # General market RSS feeds
+    general_feeds = [
+        ("https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=15839135",
+         "CNBC Markets"),
+        ("https://feeds.marketwatch.com/marketwatch/realtimeheadlines/",
+         "MarketWatch"),
+    ]
+    ticker_set = set(t.upper() for t in tickers)
+
+    for feed_url, source in general_feeds:
+        try:
+            r = requests.get(feed_url, timeout=5,
+                             headers={"User-Agent":"Mozilla/5.0"})
+            if r.status_code == 200:
+                root = ET.fromstring(r.content)
+                for item in root.findall(".//item")[:20]:
+                    title = item.findtext("title","").strip()
+                    desc  = item.findtext("description","").strip()[:200]
+                    link  = item.findtext("link","").strip()
+                    pub   = item.findtext("pubDate","").strip()
+                    if not title or title in seen_headlines:
+                        continue
+                    # Only include if mentions a watched ticker
+                    text_upper = (title+" "+desc).upper()
+                    matched = [t for t in ticker_set if t in text_upper]
+                    if matched:
+                        seen_headlines.add(title)
+                        articles.append({
+                            "ticker":    matched[0],
+                            "headline":  title,
+                            "source":    source,
+                            "url":       link,
+                            "summary":   desc,
+                            "published": pub,
+                        })
+        except:
+            pass
+
+    return articles[:30]
 
 
 def scan_earnings_with_claude(prices, client):
@@ -899,10 +996,13 @@ with tab_sig:
         st.warning("Add your Anthropic API key in the sidebar to scan for signals")
     else:
         if st.button("⟳  SCAN NOW — Search news + generate signals"):
-            with st.spinner("Claude searching real news + scoring signals…"):
+            with st.spinner("Fetching free RSS news…"):
+                news_articles = fetch_rss_news(ALL_TICKERS)
+            with st.spinner(f"Claude analysing {len(news_articles)} headlines + scoring signals…"):
                 try:
                     client = anthropic.Anthropic(api_key=anthropic_key)
-                    result = scan_with_claude(prices, client, max_signals, momentum_tickers)
+                    result = scan_with_claude(prices, client, max_signals,
+                                              momentum_tickers, news_articles)
 
                     # Market summary
                     if result.get("marketSummary"):
