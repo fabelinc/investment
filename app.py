@@ -251,6 +251,14 @@ def scan_with_claude(prices, client, max_signals=12, momentum_tickers=None, news
     )
 
     # Format pre-fetched RSS news for Claude
+    # Build ticker → articles mapping for extra context
+    news_by_ticker = {}
+    for a in (news_articles or []):
+        t = a["ticker"]
+        if t not in news_by_ticker:
+            news_by_ticker[t] = []
+        news_by_ticker[t].append(a)
+
     news_lines = ""
     if news_articles:
         news_lines = "\nREAL NEWS HEADLINES (from RSS feeds, fetched now):\n"
@@ -339,21 +347,28 @@ Return ONLY raw JSON object, start with {{ immediately:
         risk = RISK[tier]
         tk, tv = get_theme(t)
         entry  = lp["price"]
+        # Pick up to 2 extra headlines for this ticker
+        extra_news = news_by_ticker.get(t, [])
+        extra_headlines = [
+            f"{a['headline']} — {a['source']}"
+            for a in extra_news[1:3]   # skip first (already used as main headline)
+        ]
         enriched.append({
             **sig,
-            "tier":         tier,
-            "themeKey":     sig.get("theme", tk),
-            "themeLabel":   UNIVERSE.get(sig.get("theme",tk), tv)["label"],
-            "themeIcon":    UNIVERSE.get(sig.get("theme",tk), tv)["icon"],
-            "themeColor":   UNIVERSE.get(sig.get("theme",tk), tv)["color"],
-            "livePrice":    entry,
-            "priceChange":  lp["change"],
-            "volRatio":     lp["vol_ratio"],
-            "entry_price":  entry,
-            "target_price": round(entry*(1+risk["target"]/100), 2),
-            "stop_loss":    round(entry*(1-risk["stop"]/100),   2),
-            "suggestedSize":risk["size"],
-            "isMomentum":   t in momentum_tickers,
+            "tier":           tier,
+            "themeKey":       sig.get("theme", tk),
+            "themeLabel":     UNIVERSE.get(sig.get("theme",tk), tv)["label"],
+            "themeIcon":      UNIVERSE.get(sig.get("theme",tk), tv)["icon"],
+            "themeColor":     UNIVERSE.get(sig.get("theme",tk), tv)["color"],
+            "livePrice":      entry,
+            "priceChange":    lp["change"],
+            "volRatio":       lp["vol_ratio"],
+            "entry_price":    entry,
+            "target_price":   round(entry*(1+risk["target"]/100), 2),
+            "stop_loss":      round(entry*(1-risk["stop"]/100),   2),
+            "suggestedSize":  risk["size"],
+            "isMomentum":     t in momentum_tickers,
+            "extraHeadlines": extra_headlines,
         })
 
     result["signals"] = sorted(enriched, key=lambda x: x["impact_score"], reverse=True)
@@ -691,6 +706,13 @@ def render_signal(sig):
     dn    = round((sig["entry_price"]-sig["stop_loss"])/sig["entry_price"]*100,1)
     rr    = round(up/dn, 1) if dn else 0
     chg_c = "#4ade80" if sig["priceChange"]>=0 else "#f87171"
+    # Extra related headlines
+    extras = sig.get("extraHeadlines", [])
+    extra_news_html = "".join(
+        f'<div style="font-size:11px;color:#1e3a5f;margin-top:3px;line-height:1.4">'
+        f'📌 {h}</div>'
+        for h in extras[:2]
+    ) if extras else ""
 
     st.markdown(f"""
 <div style="background:#080f1a;border:1px solid {bord}44;border-left:3px solid {bord};
@@ -712,9 +734,10 @@ def render_signal(sig):
       <div style="font-size:13px;font-weight:600;color:#e2e8f0;line-height:1.5;margin-bottom:5px">
         {sig['headline']}
       </div>
-      <div style="font-size:11px;color:#2a4560">
+      <div style="font-size:11px;color:#2a4560;margin-bottom:{4 if sig.get('extraHeadlines') else 0}px">
         {sig.get('source','')} · {sig.get('hold_days',2)}d hold · Vol {sig.get('volRatio',1.0)}x
       </div>
+      {extra_news_html}
     </div>
   </div>
   <div style="background:#0e1e35;border-radius:8px;padding:10px 16px;margin-bottom:10px;
@@ -944,15 +967,7 @@ with st.spinner("Building dynamic universe…"):
 with st.spinner(f"Loading live prices for {len(ALL_TICKERS)} stocks…"):
     prices = fetch_prices(ALL_TICKERS)
 
-# Leader strip
-leaders = ["NVDA","AAPL","MSFT","GOOGL","AMZN","META","AMD","TSLA","PANW","CRWD"]
-cols = st.columns(len(leaders))
-for i, t in enumerate(leaders):
-    p = prices.get(t)
-    if p:
-        cols[i].metric(t, f"${p['price']}", f"{'+' if p['change']>=0 else ''}{p['change']}%")
 
-st.markdown("---")
 
 # Laggards (always available from price data)
 laggards = find_laggards(prices)
