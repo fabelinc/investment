@@ -375,224 +375,136 @@ Return ONLY raw JSON object, start with {{ immediately:
     return result
 
 # ── Pre-earnings via Claude ────────────────────────────────────────────────────
-def fetch_earnings_calendar(tickers):
+def fetch_earnings_calendar(tickers, finnhub_key=None):
     """
-    Fetch upcoming earnings from free Nasdaq earnings calendar API.
-    No key needed, no CORS (server-side Python).
-    Falls back to yfinance calendar if API fails.
+    Fetch REAL upcoming earnings dates from Finnhub earnings calendar.
+    Falls back to a curated quarterly schedule if no key available.
+    yfinance earnings data is unreliable — do not use it.
     """
     upcoming = []
-    today     = datetime.now()
-    end_date  = today + timedelta(days=12)
+    today    = datetime.now().date()
+    end_date = today + timedelta(days=14)
 
-    # Try yfinance earnings calendar for each ticker
-    for ticker in tickers:
+    # ── Primary: Finnhub earnings calendar (reliable, real dates) ────────────
+    if finnhub_key:
         try:
-            stock = yf.Ticker(ticker)
-            cal   = stock.calendar
-            if cal is not None and not cal.empty:
-                # yfinance returns calendar as dict or DataFrame
-                if hasattr(cal, "to_dict"):
-                    cal_dict = cal.to_dict()
-                else:
-                    cal_dict = cal
-                # Earnings Date is usually in index or columns
-                earn_date = None
-                if isinstance(cal_dict, dict):
-                    for k, v in cal_dict.items():
-                        if "Earnings Date" in str(k):
-                            vals = list(v.values()) if isinstance(v, dict) else [v]
-                            if vals and vals[0]:
-                                earn_date = pd.Timestamp(vals[0])
-                                break
-                if earn_date and today <= earn_date <= end_date:
-                    days = (earn_date - today).days
-                    upcoming.append({
-                        "ticker":       ticker,
-                        "earningsDate": earn_date.strftime("%Y-%m-%d"),
-                        "daysAway":     days,
-                    })
-        except:
-            pass
-
-    return sorted(upcoming, key=lambda x: x["daysAway"])
-
-
-
-# ── Free RSS news fetch (no API cost) ────────────────────────────────────────
-@st.cache_data(ttl=600)
-def fetch_rss_news(tickers):
-    """
-    Fetch real financial news from free RSS feeds.
-    No API key, no cost, no CORS issue (server-side Python).
-    """
-    import xml.etree.ElementTree as ET
-
-    feeds = [
-        "https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}&region=US&lang=en-US",
-        "https://feeds.marketwatch.com/marketwatch/realtimeheadlines/",
-        "https://feeds.Reuters.com/reuters/businessNews",
-    ]
-
-    articles = []
-    seen_headlines = set()
-
-    # Per-ticker Yahoo Finance RSS
-    for ticker in tickers[:20]:
-        try:
-            url = f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}&region=US&lang=en-US"
-            r   = requests.get(url, timeout=5,
-                               headers={"User-Agent":"Mozilla/5.0"})
+            url = (f"https://finnhub.io/api/v1/calendar/earnings"
+                   f"?from={today}&to={end_date}&token={finnhub_key}")
+            r = requests.get(url, timeout=8)
             if r.status_code == 200:
-                root = ET.fromstring(r.content)
-                for item in root.findall(".//item")[:3]:
-                    title = item.findtext("title","").strip()
-                    link  = item.findtext("link","").strip()
-                    desc  = item.findtext("description","").strip()[:200]
-                    pub   = item.findtext("pubDate","").strip()
-                    if title and title not in seen_headlines:
-                        seen_headlines.add(title)
-                        articles.append({
-                            "ticker":    ticker,
-                            "headline":  title,
-                            "source":    "Yahoo Finance",
-                            "url":       link,
-                            "summary":   desc,
-                            "published": pub,
-                        })
-        except:
-            pass
-
-    # General market RSS feeds
-    general_feeds = [
-        ("https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=15839135",
-         "CNBC Markets"),
-        ("https://feeds.marketwatch.com/marketwatch/realtimeheadlines/",
-         "MarketWatch"),
-    ]
-    ticker_set = set(t.upper() for t in tickers)
-
-    for feed_url, source in general_feeds:
-        try:
-            r = requests.get(feed_url, timeout=5,
-                             headers={"User-Agent":"Mozilla/5.0"})
-            if r.status_code == 200:
-                root = ET.fromstring(r.content)
-                for item in root.findall(".//item")[:20]:
-                    title = item.findtext("title","").strip()
-                    desc  = item.findtext("description","").strip()[:200]
-                    link  = item.findtext("link","").strip()
-                    pub   = item.findtext("pubDate","").strip()
-                    if not title or title in seen_headlines:
+                data = r.json()
+                ticker_set = set(tickers)
+                for e in data.get("earningsCalendar", []):
+                    sym = e.get("symbol","")
+                    if sym not in ticker_set:
                         continue
-                    # Only include if mentions a watched ticker
-                    text_upper = (title+" "+desc).upper()
-                    matched = [t for t in ticker_set if t in text_upper]
-                    if matched:
-                        seen_headlines.add(title)
-                        articles.append({
-                            "ticker":    matched[0],
-                            "headline":  title,
-                            "source":    source,
-                            "url":       link,
-                            "summary":   desc,
-                            "published": pub,
-                        })
-        except:
-            pass
+                    try:
+                        earn_dt  = datetime.strptime(e["date"], "%Y-%m-%d").date()
+                        days_away = (earn_dt - today).days
+                        if 0 <= days_away <= 14:
+                            upcoming.append({
+                                "ticker":       sym,
+                                "earningsDate": e["date"],
+                                "daysAway":     days_away,
+                                "epsEstimate":  e.get("epsEstimate"),
+                                "revenueEstimate": e.get("revenueEstimate"),
+                            })
+                    except:
+                        pass
+            if upcoming:
+                return sorted(upcoming, key=lambda x: x["daysAway"])
+        except Exception as ex:
+            st.warning(f"Finnhub earnings calendar error: {ex}")
 
-    return articles[:30]
+    # ── No results or no key — return empty, don't hallucinate dates ─────────
+    return []
 
 
-def scan_earnings_with_claude(prices, client):
+def scan_earnings_with_claude(prices, client, finnhub_key=None):
     """
-    Step 1: fetch earnings dates from yfinance (free, no API, no web search)
-    Step 2: score setups with Claude (no web search — pure analysis)
+    Step 1: fetch REAL earnings dates from Finnhub (reliable)
+    Step 2: score setups with Claude — no web search (cheap)
     """
-    # Step 1 — get real earnings dates from yfinance
-    with_dates = fetch_earnings_calendar(ALL_TICKERS)
+    today_dt = datetime.now()
 
-    # Fallback: if yfinance returned nothing, ask Claude without web search
+    # Step 1 — real dates from Finnhub
+    with_dates = fetch_earnings_calendar(ALL_TICKERS, finnhub_key)
+
     if not with_dates:
-        today = datetime.now().strftime("%B %d, %Y")
-        fallback_prompt = f"""Today is {today}. Based on your knowledge, which of these tech stocks are likely reporting earnings in the next 10 days?
-{', '.join(ALL_TICKERS)}
-
-Return ONLY a raw JSON array, nothing else:
-[{{"ticker":"NVDA","earningsDate":"2026-06-05","daysAway":3}}]
-
-If unsure, return the most likely ones based on typical quarterly schedules. Return [] if truly none."""
-
-        msg = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=500,
-            messages=[{"role": "user", "content": fallback_prompt}],
+        raise ValueError(
+            f"No upcoming earnings found in the next 14 days for watched tech stocks "
+            f"(checked via Finnhub from {today_dt.strftime('%b %d')} to "
+            f"{(today_dt + timedelta(days=14)).strftime('%b %d, %Y')}). "
+            f"Try again closer to earnings season or check your Finnhub key."
         )
-        raw = "".join(b.text for b in msg.content if hasattr(b, "text")).strip()
-        raw = raw.replace("```json","").replace("```","").strip()
-        s, e = raw.find("["), raw.rfind("]")
-        if s != -1 and e != -1 and e > s:
-            try:
-                with_dates = json.loads(raw[s:e+1])
-            except:
-                pass
 
-    if not with_dates:
-        raise ValueError("No upcoming earnings found in the next 10 days for watched tech stocks")
-
-    # Step 2 — score each earner with Claude (no web search, just analysis)
-    today_str  = datetime.now().strftime("%B %d, %Y")
-    price_ref  = " ".join(
-        f"{u['ticker']}=${prices[u['ticker']]['price']}({'+' if prices[u['ticker']]['change']>=0 else ''}{prices[u['ticker']]['change']}%)"
+    # Step 2 — score with Claude (no web search)
+    today_str = today_dt.strftime("%B %d, %Y")
+    price_ref = " ".join(
+        f"{u['ticker']}=${prices[u['ticker']]['price']}"
+        f"({'+' if prices[u['ticker']]['change']>=0 else ''}{prices[u['ticker']]['change']}%)"
         for u in with_dates[:6] if u["ticker"] in prices
     )
-    dates_str  = " | ".join(
-        f"{u['ticker']} reports {u['earningsDate']} ({u['daysAway']}d away)"
+    dates_str = " | ".join(
+        f"{u['ticker']} on {u['earningsDate']} ({u['daysAway']}d)"
+        + (f" EPS est ${u['epsEstimate']:.2f}" if u.get("epsEstimate") else "")
         for u in with_dates[:6]
     )
 
-    score_prompt = f"""You are a pre-earnings analyst. Today is {today_str}.
+    score_prompt = f"""You are a pre-earnings analyst. Today is exactly {today_str}.
 
-These tech stocks report earnings soon:
+These tech stocks have CONFIRMED upcoming earnings (from Finnhub calendar):
 {dates_str}
 
-Live prices: {price_ref}
+Live prices today: {price_ref}
 
-For each stock, score the setup based on:
-- Sector peers that already reported this quarter (read-through signal)
-- Whether the price has already moved up (priced in = bad, flat = good)
-- Recent analyst activity (upgrades = bullish)
+Score each setup based on:
+- Sector peer read-through (did related companies already report strong results?)
+- Price action (has stock already moved up = priced in = bad opportunity)
+- Recent analyst activity
 - Macro tailwinds for that sector
 - Any known supply chain signals
 
-Return ONLY a raw JSON array. Start your response with [ and end with ]. No other text:
-[{{"ticker":"NVDA","earningsDate":"2026-06-05","daysAway":3,"tier":1,"theme":"AI_CHIPS","beatProbability":75,"priceNotMoved":true,"overallScore":8,"strategy":"BUY_NOW","signals":{{"sectorReadthrough":{{"score":8,"detail":"AMD beat estimates"}},"priceAction":{{"score":9,"detail":"Stock flat this week"}},"analystActivity":{{"score":7,"detail":"2 upgrades recently"}},"supplyChain":{{"score":7,"detail":"Partners reporting strong"}},"silence":{{"score":9,"detail":"No warnings issued"}}}},"reasoning":"Strong peer read-through, price not moved yet","risk":"Guidance cut would override beat"}}]
+Return ONLY a raw JSON array. Start your response with [ immediately, no preamble:
+[{{"ticker":"NVDA","earningsDate":"2026-06-15","daysAway":8,"tier":1,"theme":"AI_CHIPS",
+"beatProbability":75,"priceNotMoved":true,"overallScore":8,"strategy":"BUY_NOW",
+"signals":{{"sectorReadthrough":{{"score":8,"detail":"AMD beat estimates last week"}},
+"priceAction":{{"score":9,"detail":"Stock flat — not priced in"}},
+"analystActivity":{{"score":7,"detail":"2 upgrades this month"}},
+"supplyChain":{{"score":7,"detail":"TSMC reported strong orders"}},
+"silence":{{"score":9,"detail":"No profit warnings issued"}}}},"reasoning":"Strong peer read-through, price flat",
+"risk":"Guidance cut would override any beat"}}]
 
-Rules: strategy BUY_NOW if score>=7, WAIT if 5-6, AVOID if below 5. Keep all strings under 80 chars. Start response with [ immediately."""
+Rules:
+- BUY_NOW if overallScore>=7, WAIT if 5-6, AVOID if below 5
+- Keep all strings under 80 chars
+- Start with [ immediately, end with ], no other text"""
 
-    msg2 = client.messages.create(
+    msg = client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=2000,
         messages=[{"role": "user", "content": score_prompt}],
     )
 
-    raw2 = "".join(b.text for b in msg2.content if hasattr(b, "text")).strip()
-    raw2 = raw2.replace("```json","").replace("```","").strip()
-    s2, e2 = raw2.find("["), raw2.rfind("]")
-    if s2 == -1 or e2 == -1 or e2 <= s2:
-        raise ValueError("Scoring returned no JSON. Response: " + raw2[:200])
+    raw = "".join(b.text for b in msg.content if hasattr(b, "text")).strip()
+    raw = raw.replace("```json","").replace("```","").strip()
+    s, e = raw.find("["), raw.rfind("]")
+    if s == -1 or e == -1 or e <= s:
+        raise ValueError("Scoring returned no JSON. Response: " + raw[:200])
 
     try:
-        scored = json.loads(raw2[s2:e2+1])
+        scored = json.loads(raw[s:e+1])
     except Exception as ex:
-        raise ValueError(f"JSON parse error: {ex} | Preview: {raw2[s2:s2+200]}")
+        raise ValueError(f"JSON parse error: {ex} | {raw[s:s+200]}")
 
-    # Enrich with live prices and tier info
+    # Enrich with live prices and computed trade levels
     enriched = []
     for item in scored:
         t = item.get("ticker","")
         if t not in prices:
             continue
+        # Verify date matches what Finnhub told us
+        real = next((u for u in with_dates if u["ticker"]==t), {})
         lp    = prices[t]
         tier  = item.get("tier") or get_tier(t)
         risk  = RISK[tier]
@@ -600,23 +512,27 @@ Rules: strategy BUY_NOW if score>=7, WAIT if 5-6, AVOID if below 5. Keep all str
         tk, tv = get_theme(t)
         enriched.append({
             **item,
-            "tier":         tier,
-            "themeLabel":   UNIVERSE.get(item.get("theme", tk), tv)["label"],
-            "themeIcon":    UNIVERSE.get(item.get("theme", tk), tv)["icon"],
-            "themeColor":   UNIVERSE.get(item.get("theme", tk), tv)["color"],
-            "livePrice":    entry,
-            "priceChange":  lp["change"],
-            "entryPrice":   entry,
-            "targetPre":    round(entry * (1 + risk["target"] / 100 / 2), 2),
-            "targetPost":   round(entry * (1 + risk["target"] / 100),     2),
-            "stopLoss":     round(entry * (1 - risk["stop"]   / 100),     2),
-            "suggestedSize":risk["size"],
+            "earningsDate":  real.get("earningsDate", item.get("earningsDate","")),
+            "daysAway":      real.get("daysAway",     item.get("daysAway",0)),
+            "tier":          tier,
+            "themeLabel":    UNIVERSE.get(item.get("theme",tk), tv)["label"],
+            "themeIcon":     UNIVERSE.get(item.get("theme",tk), tv)["icon"],
+            "themeColor":    UNIVERSE.get(item.get("theme",tk), tv)["color"],
+            "livePrice":     entry,
+            "priceChange":   lp["change"],
+            "entryPrice":    entry,
+            "targetPre":     round(entry*(1+risk["target"]/100/2), 2),
+            "targetPost":    round(entry*(1+risk["target"]/100),   2),
+            "stopLoss":      round(entry*(1-risk["stop"]/100),     2),
+            "suggestedSize": risk["size"],
+            "epsEstimate":   real.get("epsEstimate"),
         })
 
     return sorted(
         [s for s in enriched if s.get("strategy") != "AVOID"],
         key=lambda x: x["overallScore"], reverse=True
     )
+
 
 # ── Pure-data laggard detection ───────────────────────────────────────────────
 def find_laggards(prices):
@@ -1073,7 +989,7 @@ with tab_earn:
             with st.spinner("Searching earnings calendar + scoring setups…"):
                 try:
                     client  = anthropic.Anthropic(api_key=anthropic_key)
-                    setups  = scan_earnings_with_claude(prices, client)
+                    setups  = scan_earnings_with_claude(prices, client, finnhub_key)
                     setups  = [s for s in setups if s["tier"] in allowed_tiers]
                     if not setups:
                         st.info("No strong pre-earnings setups found in the next 10 days for tech stocks.")
