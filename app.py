@@ -189,6 +189,79 @@ def build_dynamic_universe():
     return momentum[:15]  # top 15 momentum picks
 
 # ── Live prices via yfinance ───────────────────────────────────────────────────
+
+# ── Free RSS news fetch (no API cost) ─────────────────────────────────────────
+@st.cache_data(ttl=600)
+def fetch_rss_news(tickers):
+    """
+    Fetch real financial news from free RSS feeds.
+    No API key, no cost, runs server-side in Python (no CORS).
+    """
+    import xml.etree.ElementTree as ET
+    articles     = []
+    seen         = set()
+    ticker_set   = set(t.upper() for t in tickers)
+
+    # Per-ticker Yahoo Finance RSS (most reliable)
+    for ticker in tickers[:20]:
+        try:
+            url = (f"https://feeds.finance.yahoo.com/rss/2.0/headline"
+                   f"?s={ticker}&region=US&lang=en-US")
+            r = requests.get(url, timeout=5,
+                             headers={"User-Agent": "Mozilla/5.0"})
+            if r.status_code == 200:
+                root = ET.fromstring(r.content)
+                for item in root.findall(".//item")[:3]:
+                    title = (item.findtext("title") or "").strip()
+                    if title and title not in seen:
+                        seen.add(title)
+                        articles.append({
+                            "ticker":    ticker,
+                            "headline":  title,
+                            "source":    "Yahoo Finance",
+                            "url":       (item.findtext("link") or "").strip(),
+                            "summary":   (item.findtext("description") or "")[:200],
+                            "published": (item.findtext("pubDate") or "").strip(),
+                        })
+        except:
+            pass
+
+    # General market RSS — CNBC + MarketWatch, filtered to watched tickers
+    general_feeds = [
+        ("https://search.cnbc.com/rs/search/combinedcms/view.xml"
+         "?partnerId=wrss01&id=15839135", "CNBC"),
+        ("https://feeds.marketwatch.com/marketwatch/realtimeheadlines/",
+         "MarketWatch"),
+    ]
+    for feed_url, source in general_feeds:
+        try:
+            r = requests.get(feed_url, timeout=5,
+                             headers={"User-Agent": "Mozilla/5.0"})
+            if r.status_code == 200:
+                root = ET.fromstring(r.content)
+                for item in root.findall(".//item")[:30]:
+                    title = (item.findtext("title") or "").strip()
+                    desc  = (item.findtext("description") or "")[:200]
+                    if not title or title in seen:
+                        continue
+                    text_up  = (title + " " + desc).upper()
+                    matched  = [t for t in ticker_set if t in text_up]
+                    if matched:
+                        seen.add(title)
+                        articles.append({
+                            "ticker":    matched[0],
+                            "headline":  title,
+                            "source":    source,
+                            "url":       (item.findtext("link") or "").strip(),
+                            "summary":   desc,
+                            "published": (item.findtext("pubDate") or "").strip(),
+                        })
+        except:
+            pass
+
+    return articles[:40]
+
+
 @st.cache_data(ttl=300)
 def fetch_prices(tickers):
     prices = {}
@@ -852,6 +925,33 @@ if anthropic_key:
     st.sidebar.success("✓ API key saved for this session")
 else:
     st.sidebar.caption("Get your key at console.anthropic.com")
+
+# Finnhub key (persistent)
+if "finnhub_key" not in st.session_state:
+    try:
+        st.session_state["finnhub_key"] = st.secrets["FINNHUB_API_KEY"]
+    except:
+        st.session_state["finnhub_key"] = ""
+
+def _save_finnhub():
+    st.session_state["finnhub_key"] = st.session_state["_finnhub_input"]
+
+typed_fh = st.sidebar.text_input(
+    "Finnhub API Key:",
+    value=st.session_state["finnhub_key"],
+    type="password",
+    key="_finnhub_input",
+    on_change=_save_finnhub,
+    help="Free at finnhub.io — used for earnings calendar",
+)
+if typed_fh:
+    st.session_state["finnhub_key"] = typed_fh
+finnhub_key = st.session_state["finnhub_key"]
+
+if finnhub_key:
+    st.sidebar.success("✓ Finnhub key saved")
+else:
+    st.sidebar.caption("Get free key at finnhub.io")
 
 st.sidebar.markdown("---")
 max_signals = st.sidebar.slider("Max signals to show", 5, 15, 10)
