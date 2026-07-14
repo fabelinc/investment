@@ -32,91 +32,178 @@ hr{border-color:#0e1e35}
 
 # ── Universe definition ──────────────────────────────────────────────────────
 
-# TIER 1 — Fixed anchors, always scanned, safest (mega cap, highest liquidity)
-TIER1_FIXED = [
-    "AAPL","MSFT","NVDA","GOOGL","AMZN","META","TSLA","ORCL","NFLX","ADBE",
-]
+SECTORS = {
+    "TECH": {
+        "label":   "Tech / AI / Cloud / Cyber",
+        "icon":    "💻",
+        "color":   "#38bdf8",
+        "tab":     "💻 TECH",
+        "themes": {
+            "AI_CHIPS":   {"label":"AI & Semiconductors","icon":"🤖","color":"#a78bfa",
+                           "leaders":["NVDA","AMD","MSFT"],
+                           "tier1":["NVDA","MSFT","GOOGL","AMZN","META"],
+                           "tier2":["AMD","AVGO","QCOM","ARM","TSM","MU","AMAT","SMCI","MRVL"],
+                           "tier3":["AI","SOUN","IONQ","LRCX","KLAC"]},
+            "CLOUD_SAAS": {"label":"Cloud & SaaS","icon":"☁️","color":"#38bdf8",
+                           "leaders":["MSFT","AMZN","GOOGL"],
+                           "tier1":["MSFT","AMZN","GOOGL","ORCL","ADBE"],
+                           "tier2":["CRM","NOW","SNOW","DDOG","NET","WDAY","VEEV","GTLB"],
+                           "tier3":["MDB","CFLT","ESTC","DOMO"]},
+            "CYBER":      {"label":"Cybersecurity","icon":"🔒","color":"#e879f9",
+                           "leaders":["PANW","CRWD"],
+                           "tier1":["PANW","MSFT"],
+                           "tier2":["CRWD","ZS","FTNT","OKTA","S"],
+                           "tier3":["TENB","QLYS"]},
+            "BIG_TECH":   {"label":"Big Tech","icon":"📱","color":"#4ade80",
+                           "leaders":["AAPL","MSFT","GOOGL"],
+                           "tier1":["AAPL","MSFT","GOOGL","AMZN","META","NFLX","TSLA"],
+                           "tier2":["UBER","SHOP","PLTR","APP","RBLX","ABNB","ORCL"],
+                           "tier3":["DELL","HPQ","HPE","INTC","CSCO","ANET"]},
+        },
+        "tier1": ["NVDA","AAPL","MSFT","GOOGL","AMZN","META","TSLA","ORCL","NFLX","ADBE"],
+        "tier2": ["AMD","AVGO","QCOM","ARM","TSM","MU","AMAT","LRCX","KLAC","MRVL","SMCI",
+                  "CRM","NOW","SNOW","DDOG","NET","WDAY","VEEV","GTLB",
+                  "PANW","CRWD","FTNT","ZS","OKTA","S",
+                  "UBER","SHOP","PLTR","APP","RBLX","ABNB",
+                  "ANET","CSCO","DELL","HPE"],
+        "tier3": ["AI","SOUN","IONQ","MDB","CFLT","ESTC","TENB","QLYS","HPQ","INTC"],
+    },
 
-# TIER 2 — Established tech, S&P 500 members, strong fundamentals
-TIER2_FIXED = [
-    # AI & Chips
-    "AMD","AVGO","QCOM","ARM","TSM","MU","AMAT","LRCX","KLAC","MRVL","SMCI",
-    # Cloud & SaaS
-    "CRM","NOW","SNOW","DDOG","NET","MDB","GTLB","WDAY","VEEV",
-    # Cybersecurity
-    "PANW","CRWD","FTNT","ZS","OKTA","S",
-    # Big Tech adjacent
-    "UBER","SHOP","PLTR","APP","RBLX","ABNB",
-    # Infra & Hardware
-    "ANET","CSCO","DELL","HPE","JNPR",
-    # Semiconductors extended
-    "INTC","TXN","ADI","MCHP","ON",
-]
+    "HEALTHCARE": {
+        "label":   "Healthcare & Biotech",
+        "icon":    "💊",
+        "color":   "#f87171",
+        "tab":     "💊 HEALTH",
+        "themes": {
+            "PHARMA":  {"label":"Pharma & Biotech","icon":"💉","color":"#f87171",
+                        "leaders":["LLY","JNJ"],
+                        "tier1":["LLY","JNJ","ABBV","MRK","PFE"],
+                        "tier2":["AMGN","BMY","GILD","REGN","VRTX","BIIB"],
+                        "tier3":["MRNA","BNTX","SGEN","ALNY","BEAM"]},
+            "MEDTECH": {"label":"Medical Devices","icon":"🔬","color":"#fb923c",
+                        "leaders":["ISRG","MDT"],
+                        "tier1":["ISRG","MDT","ABT","BSX","EW"],
+                        "tier2":["ZBH","SYK","BDX","HOLX","DXCM"],
+                        "tier3":["INSP","TMDX","SWAV"]},
+            "MANAGED": {"label":"Health Insurance","icon":"🏥","color":"#fbbf24",
+                        "leaders":["UNH","CVS"],
+                        "tier1":["UNH","CVS","CI","ELV","HUM"],
+                        "tier2":["MOH","CNC","HCA"],
+                        "tier3":[]},
+        },
+        "tier1": ["LLY","JNJ","ABBV","MRK","UNH","PFE","CVS","ISRG","MDT","ABT"],
+        "tier2": ["AMGN","BMY","GILD","REGN","VRTX","BSX","EW","CI","ELV","HUM",
+                  "ZBH","SYK","BDX","DXCM","HCA","MOH"],
+        "tier3": ["MRNA","BNTX","ALNY","BEAM","INSP","HOLX"],
+    },
 
-# TIER 3 — Higher growth, higher risk, smaller cap but promising
-TIER3_FIXED = [
-    "AI","BBAI","SOUN","IONQ","RXRX","GFAI",   # AI pure plays
-    "WOLF","LAZR","OUST",                         # emerging tech
-    "HPQ","WDC","STX","NTAP",                    # storage / hardware
-    "TENB","QLYS","SAIL","SCWX",                 # cyber extended
-    "CFLT","ESTC","DOMO","JAMF",                 # SaaS extended
-]
+    "FINANCIALS": {
+        "label":   "Financials",
+        "icon":    "💳",
+        "color":   "#34d399",
+        "tab":     "💳 FINANCE",
+        "themes": {
+            "PAYMENTS": {"label":"Payments & Fintech","icon":"💳","color":"#34d399",
+                         "leaders":["V","MA"],
+                         "tier1":["V","MA"],
+                         "tier2":["AXP","PYPL","FIS","FISV","GPN"],
+                         "tier3":["SQ","AFRM","SOFI","NU"]},
+            "BANKS":    {"label":"Banks & Asset Mgmt","icon":"🏦","color":"#4ade80",
+                         "leaders":["JPM","GS"],
+                         "tier1":["JPM","BAC","GS","MS","WFC"],
+                         "tier2":["BLK","SCHW","BX","KKR","AMP"],
+                         "tier3":["ALLY","COIN","HOOD"]},
+            "INSURANCE":{"label":"Insurance","icon":"🛡","color":"#a3e635",
+                         "leaders":["BRK-B","PGR"],
+                         "tier1":["BRK-B","PGR","ALL","TRV"],
+                         "tier2":["AON","MMC","MET","PRU"],
+                         "tier3":[]},
+        },
+        "tier1": ["V","MA","JPM","BAC","GS","MS","BRK-B","PGR","BLK","WFC"],
+        "tier2": ["AXP","PYPL","FIS","FISV","SCHW","BX","KKR","AON","MMC","ALL","TRV"],
+        "tier3": ["SQ","AFRM","SOFI","NU","COIN","HOOD","ALLY"],
+    },
 
-# Theme map — for signal categorisation
-UNIVERSE = {
-    "AI_CHIPS":    {"label":"AI & Semiconductors","icon":"🤖","color":"#a78bfa",
-                    "leaders":["NVDA","AMD","MSFT"],
-                    "tier1":["NVDA","MSFT","GOOGL","AMZN","META"],
-                    "tier2":["AMD","AVGO","QCOM","ARM","TSM","MU","AMAT","SMCI","MRVL"],
-                    "tier3":["AI","BBAI","SOUN","IONQ","LRCX","KLAC"]},
-    "CLOUD_SAAS":  {"label":"Cloud & SaaS",       "icon":"☁️","color":"#38bdf8",
-                    "leaders":["MSFT","AMZN","GOOGL"],
-                    "tier1":["MSFT","AMZN","GOOGL","ORCL","ADBE"],
-                    "tier2":["CRM","NOW","SNOW","DDOG","NET","WDAY","VEEV","GTLB"],
-                    "tier3":["MDB","CFLT","ESTC","DOMO","JAMF"]},
-    "CYBER":       {"label":"Cybersecurity",       "icon":"🔒","color":"#e879f9",
-                    "leaders":["PANW","CRWD"],
-                    "tier1":["PANW","MSFT"],
-                    "tier2":["CRWD","ZS","FTNT","OKTA","S"],
-                    "tier3":["TENB","QLYS","SAIL","SCWX"]},
-    "BIG_TECH":    {"label":"Big Tech",            "icon":"💻","color":"#4ade80",
-                    "leaders":["AAPL","MSFT","GOOGL"],
-                    "tier1":["AAPL","MSFT","GOOGL","AMZN","META","NFLX","TSLA"],
-                    "tier2":["UBER","SHOP","PLTR","APP","RBLX","ABNB","ORCL"],
-                    "tier3":["DELL","HPQ","HPE","INTC","CSCO","ANET","JNPR"]},
-    "SEMIS":       {"label":"Semiconductors",      "icon":"⚡","color":"#fbbf24",
-                    "leaders":["NVDA","TSM","AVGO"],
-                    "tier1":["NVDA","TSM","AVGO","QCOM","ARM"],
-                    "tier2":["MU","AMAT","LRCX","KLAC","TXN","ADI","MCHP","ON","MRVL"],
-                    "tier3":["SMCI","WDC","STX","NTAP","WOLF"]},
+    "CONSUMER": {
+        "label":   "Consumer Staples",
+        "icon":    "🛒",
+        "color":   "#fbbf24",
+        "tab":     "🛒 CONSUMER",
+        "themes": {
+            "STAPLES":  {"label":"Staples & Retail","icon":"🛒","color":"#fbbf24",
+                         "leaders":["WMT","COST"],
+                         "tier1":["WMT","COST","AMZN","HD","TGT"],
+                         "tier2":["LOW","DG","DLTR","KR","SYY"],
+                         "tier3":["FIVE","OLLI","GO"]},
+            "FOOD_BEV": {"label":"Food & Beverage","icon":"🥤","color":"#fb923c",
+                         "leaders":["KO","PEP"],
+                         "tier1":["KO","PEP","MDLZ","GIS","K"],
+                         "tier2":["HSY","MKC","SJM","CAG","CPB"],
+                         "tier3":[]},
+            "HOUSEHOLD":{"label":"Household & Personal","icon":"🧴","color":"#a78bfa",
+                         "leaders":["PG","CL"],
+                         "tier1":["PG","CL","KMB","CHD","EL"],
+                         "tier2":["COTY","SPB","HRL"],
+                         "tier3":[]},
+            "DINING":   {"label":"Restaurants & Dining","icon":"🍔","color":"#f97316",
+                         "leaders":["MCD","SBUX"],
+                         "tier1":["MCD","SBUX","YUM","CMG"],
+                         "tier2":["DPZ","QSR","DNUT","SHAK"],
+                         "tier3":[]},
+        },
+        "tier1": ["WMT","COST","KO","PEP","PG","MCD","SBUX","HD","TGT","CL"],
+        "tier2": ["LOW","DG","DLTR","KR","MDLZ","GIS","CMG","YUM","KMB","HSY","CHD"],
+        "tier3": ["FIVE","OLLI","COTY","DPZ","SHAK","HRL"],
+    },
 }
 
-# Combined fixed universe (deduped, ordered by tier)
-_seen = set()
-ALL_TICKERS_FIXED = []
-for t in TIER1_FIXED + TIER2_FIXED + TIER3_FIXED:
-    if t not in _seen:
-        _seen.add(t)
-        ALL_TICKERS_FIXED.append(t)
+# Flat lists per sector for scanning
+SECTOR_TICKERS = {
+    k: list(dict.fromkeys(v["tier1"] + v["tier2"] + v["tier3"]))
+    for k, v in SECTORS.items()
+}
+
+# All tickers across all sectors (deduped)
+ALL_TICKERS_FIXED = list(dict.fromkeys(
+    t for s in SECTORS.values()
+    for t in s["tier1"] + s["tier2"] + s["tier3"]
+))
+
+# Keep UNIVERSE alias for existing theme-based code
+UNIVERSE = {}
+for sector_data in SECTORS.values():
+    UNIVERSE.update(sector_data.get("themes", {}))
 
 RISK = {
     1: {"stop":3,  "target":5,  "size":"$500",  "label":"🟢 TIER 1 · ANCHOR"},
     2: {"stop":4,  "target":8,  "size":"$375",  "label":"🟡 TIER 2 · GROWTH"},
     3: {"stop":5,  "target":12, "size":"$250",  "label":"🔴 TIER 3 · DYNAMIC"},
-    4: {"stop":6,  "target":15, "size":"$150",  "label":"⚡ MOMENTUM · SPECULATIVE"},
+    4: {"stop":6,  "target":15, "size":"$150",  "label":"⚡ MOMENTUM"},
 }
 
 def get_tier(ticker):
-    if ticker in TIER1_FIXED: return 1
-    if ticker in TIER2_FIXED: return 2
-    if ticker in TIER3_FIXED: return 3
-    return 4  # momentum / dynamic addition
+    for s in SECTORS.values():
+        if ticker in s["tier1"]: return 1
+        if ticker in s["tier2"]: return 2
+        if ticker in s["tier3"]: return 3
+    return 4
+
+def get_sector(ticker):
+    for k, s in SECTORS.items():
+        if ticker in s["tier1"]+s["tier2"]+s["tier3"]:
+            return k, s
+    return "TECH", SECTORS["TECH"]
 
 def get_theme(ticker):
     for k, v in UNIVERSE.items():
-        if ticker in v["tier1"]+v["tier2"]+v["tier3"]:
+        if ticker in v.get("tier1",[])+v.get("tier2",[])+v.get("tier3",[]):
             return k, v
-    return "BIG_TECH", UNIVERSE["BIG_TECH"]
+    sk, sv = get_sector(ticker)
+    themes = sv.get("themes", {})
+    if themes:
+        first_key = list(themes.keys())[0]
+        return first_key, themes[first_key]
+    return "BIG_TECH", UNIVERSE.get("BIG_TECH", {"label":"Tech","icon":"💻","color":"#38bdf8"})
 
 # ── Dynamic universe builder ───────────────────────────────────────────────────
 @st.cache_data(ttl=3600)  # refresh every hour
@@ -610,9 +697,11 @@ Rules:
 # ── Pure-data laggard detection ───────────────────────────────────────────────
 def find_laggards(prices):
     laggards = []
-    for theme_key, theme in UNIVERSE.items():
-        leaders   = theme["tier1"]
-        all_stocks= theme["tier1"] + theme["tier2"] + theme["tier3"]
+    # Check laggards across ALL sectors and their themes
+    for sector_key, sector_data in SECTORS.items():
+        for theme_key, theme in sector_data.get("themes", {}).items():
+            leaders   = theme.get("tier1", [])
+            all_stocks= theme.get("tier1",[]) + theme.get("tier2",[]) + theme.get("tier3",[])
 
         leader_moves = [prices[l]["change"] for l in leaders if l in prices]
         if not leader_moves:
@@ -640,11 +729,12 @@ def find_laggards(prices):
 
             laggards.append({
                 "ticker":       ticker,
+                "sector":       sector_key,
                 "tier":         tier,
                 "themeKey":     theme_key,
-                "themeLabel":   theme["label"],
-                "themeIcon":    theme["icon"],
-                "themeColor":   theme["color"],
+                "themeLabel":   theme.get("label",""),
+                "themeIcon":    theme.get("icon","📈"),
+                "themeColor":   theme.get("color","#38bdf8"),
                 "type":         "LAGGARD",
                 "direction":    "bullish",
                 "impact_score": score,
@@ -1013,210 +1103,355 @@ if active_themes:
             unsafe_allow_html=True)
 
 # Tabs
-tab_sig, tab_lag, tab_earn, tab_prices, tab_universe = st.tabs([
-    f"📡 SIGNALS",
+# ── Build sector-specific signal scan function ───────────────────────────────
+def scan_sector_with_claude(sector_key, sector_data, prices, client,
+                             news_articles=None, max_signals=8,
+                             momentum_tickers=None):
+    """Score signals for a specific sector."""
+    momentum_tickers = momentum_tickers or []
+    today     = datetime.now().strftime("%B %d, %Y")
+    tickers   = SECTOR_TICKERS[sector_key]
+    all_scan  = list(dict.fromkeys(tickers + [m for m in momentum_tickers
+                     if get_sector(m)[0] == sector_key]))
+
+    price_lines = [
+        f"{t}=${p['price']}({'+' if p['change']>=0 else ''}{p['change']}% vol{p['vol_ratio']}x)"
+        for t in sector_data["tier1"] if (p := prices.get(t))
+    ]
+    all_prices = [
+        f"{t}=${p['price']}({'+' if p['change']>=0 else ''}{p['change']}%)"
+        for t in all_scan if (p := prices.get(t))
+    ]
+
+    # Filter news to this sector
+    news_by_ticker = {}
+    for a in (news_articles or []):
+        tk = a["ticker"]
+        if tk in set(all_scan):
+            news_by_ticker.setdefault(tk, []).append(a)
+
+    news_lines = ""
+    if news_by_ticker:
+        news_lines = "\nREAL NEWS HEADLINES:\n" + "\n".join(
+            f"- [{tk}] {arts[0]['headline']} ({arts[0]['source']})"
+            for tk, arts in list(news_by_ticker.items())[:15]
+        )
+
+    prompt = f"""You are a senior equity analyst covering {sector_data['label']}. Today is {today}.
+
+Find the {max_signals} strongest trade signals for these {sector_data['label']} stocks.
+{news_lines}
+
+WATCHLIST: {', '.join(all_scan[:35])}
+
+LEADER PRICES: {' | '.join(price_lines[:8])}
+ALL PRICES: {' '.join(all_prices[:40])}
+
+Rules:
+- ONE signal per ticker, no duplicates
+- DIRECT signals (own news catalyst) or LAGGARD (sector ripple not yet priced)
+- Bullish only unless very strong bearish catalyst
+- impact_score >= 6 only
+- entry_price MUST match live price shown
+- Keep strings short (headline<90, reasoning<100, risk<70 chars)
+
+Return ONLY raw JSON object, start with {{ immediately:
+{{
+  "marketSummary": "one sentence on {sector_data['label']} today",
+  "signals": [
+    {{
+      "ticker": "LLY",
+      "tier": 1,
+      "theme": "PHARMA",
+      "type": "DIRECT",
+      "direction": "bullish",
+      "impact_score": 8,
+      "headline": "real headline under 90 chars",
+      "source": "Reuters",
+      "reasoning": "why this moves under 100 chars",
+      "entry_price": 850.00,
+      "target_price": 893.00,
+      "stop_loss": 824.00,
+      "hold_days": 3,
+      "confidence": "High",
+      "risk": "specific risk under 70 chars",
+      "articleUrl": null
+    }}
+  ]
+}}"""
+
+    message = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=2000,
+        messages=[{"role": "user", "content": prompt}],
+    )
+
+    raw = "".join(b.text for b in message.content if hasattr(b,"text")).strip()
+    raw = raw.replace("```json","").replace("```","").strip()
+    s, e = raw.find("{"), raw.rfind("}")
+    if s == -1 or e == -1:
+        raise ValueError("No JSON: " + raw[:150])
+
+    result = json.loads(raw[s:e+1])
+
+    seen = set()
+    enriched = []
+    for sig in result.get("signals", []):
+        t = sig.get("ticker","")
+        if t in seen or t not in prices:
+            continue
+        seen.add(t)
+        lp   = prices[t]
+        tier = sig.get("tier") or get_tier(t)
+        risk = RISK[tier]
+        entry = lp["price"]
+        sk, sv = get_sector(t)
+        # Extra headlines
+        extras = [
+            f"{a['headline']} — {a['source']}"
+            for a in news_by_ticker.get(t, [])[1:3]
+        ]
+        # Theme info
+        theme_key = sig.get("theme","")
+        theme_info = UNIVERSE.get(theme_key, {
+            "label": sv["label"], "icon": sv["icon"], "color": sv["color"]
+        })
+        enriched.append({
+            **sig,
+            "sector":         sector_key,
+            "sectorLabel":    sv["label"],
+            "sectorIcon":     sv["icon"],
+            "tier":           tier,
+            "themeKey":       theme_key,
+            "themeLabel":     theme_info.get("label", sv["label"]),
+            "themeIcon":      theme_info.get("icon",  sv["icon"]),
+            "themeColor":     theme_info.get("color", sv["color"]),
+            "livePrice":      entry,
+            "priceChange":    lp["change"],
+            "volRatio":       lp["vol_ratio"],
+            "entry_price":    entry,
+            "target_price":   round(entry*(1+risk["target"]/100), 2),
+            "stop_loss":      round(entry*(1-risk["stop"]/100),   2),
+            "suggestedSize":  risk["size"],
+            "isMomentum":     t in momentum_tickers,
+            "extraHeadlines": extras,
+        })
+
+    result["signals"] = sorted(enriched, key=lambda x: x["impact_score"], reverse=True)
+    return result
+
+
+# ── Tabs — one per sector + shared tabs ───────────────────────────────────────
+tab_tech, tab_health, tab_fin, tab_consumer, tab_lag, tab_earn, tab_universe = st.tabs([
+    f"💻 TECH",
+    f"💊 HEALTH",
+    f"💳 FINANCE",
+    f"🛒 CONSUMER",
     f"⏳ LAGGARDS ({len(laggards)})",
     "📅 EARNINGS",
-    f"💹 PRICES ({len(prices)})",
     f"🌐 UNIVERSE ({len(ALL_TICKERS)})",
 ])
 
-# ── SIGNALS TAB ───────────────────────────────────────────────────────────────
-with tab_sig:
-    if not anthropic_key:
-        st.warning("Add your Anthropic API key in the sidebar to scan for signals")
-    else:
-        if st.button("⟳  SCAN NOW — Search news + generate signals"):
-            with st.spinner("Fetching free RSS news…"):
-                news_articles = fetch_rss_news(ALL_TICKERS)
-            with st.spinner(f"Claude analysing {len(news_articles)} headlines + scoring signals…"):
+sector_tabs = {
+    "TECH":       tab_tech,
+    "HEALTHCARE": tab_health,
+    "FINANCIALS": tab_fin,
+    "CONSUMER":   tab_consumer,
+}
+
+# ── Render each sector tab ────────────────────────────────────────────────────
+for sector_key, tab in sector_tabs.items():
+    sector_data = SECTORS[sector_key]
+    with tab:
+        col_info, col_btn = st.columns([3,1])
+        with col_info:
+            # Active theme detection for this sector
+            sector_tickers_list = SECTOR_TICKERS[sector_key]
+            active = []
+            for theme_key, theme in sector_data.get("themes",{}).items():
+                moves = [prices[l]["change"] for l in theme.get("leaders",[]) if l in prices]
+                if moves:
+                    avg = sum(moves)/len(moves)
+                    if abs(avg) >= 1.0:
+                        c = "#4ade80" if avg>0 else "#f87171"
+                        active.append(f'<span style="font-size:11px;padding:2px 8px;border-radius:12px;'
+                                      f'background:{c}18;border:1px solid {c}44;color:{c};margin-right:6px">'
+                                      f'{theme["icon"]} {theme["label"]} {avg:+.1f}%</span>')
+            if active:
+                st.markdown("**Active:** " + " ".join(active), unsafe_allow_html=True)
+            else:
+                st.markdown(f"<span style='color:#2a4560;font-size:12px'>"
+                            f"Watching {len(sector_tickers_list)} {sector_data['label']} stocks</span>",
+                            unsafe_allow_html=True)
+
+        with col_btn:
+            scan_btn = st.button(f"⟳ SCAN", key=f"scan_{sector_key}",
+                                  use_container_width=True)
+
+        if not anthropic_key:
+            st.warning("Add Anthropic API key in sidebar")
+        elif scan_btn:
+            with st.spinner(f"Fetching {sector_data['label']} news…"):
+                sector_news = fetch_rss_news(sector_tickers_list)
+            with st.spinner(f"Claude scoring {sector_data['label']} signals…"):
                 try:
                     client = anthropic.Anthropic(api_key=anthropic_key)
-                    result = scan_with_claude(prices, client, max_signals,
-                                              momentum_tickers, news_articles)
-
-                    # Market summary
+                    result = scan_sector_with_claude(
+                        sector_key, sector_data, prices, client,
+                        sector_news, max_signals, momentum_tickers
+                    )
                     if result.get("marketSummary"):
                         st.info(f"📊 {result['marketSummary']}")
 
-                    # Active themes from Claude
-                    themes = result.get("activeThemes", [])
-                    if themes:
-                        theme_labels = [
-                            f"{UNIVERSE[t]['icon']} {UNIVERSE[t]['label']}"
-                            for t in themes if t in UNIVERSE
-                        ]
-                        st.markdown(f"**Themes active today:** {' · '.join(theme_labels)}")
-
-                    signals = [
-                        s for s in result.get("signals", [])
-                        if s["tier"] in allowed_tiers
-                    ][:max_signals]
-
+                    signals = result.get("signals", [])
                     if not signals:
-                        st.info("No signals found above threshold. Market may be quiet — try again later.")
+                        st.info(f"No strong signals in {sector_data['label']} right now.")
                     else:
-                        direct  = [s for s in signals if s.get("type") != "LAGGARD"]
-                        laggard = [s for s in signals if s.get("type") == "LAGGARD"]
+                        direct   = sum(1 for s in signals if s.get("type")!="LAGGARD")
+                        laggard_ = sum(1 for s in signals if s.get("type")=="LAGGARD")
                         st.success(
                             f"✓ {len(signals)} signals — "
-                            f"{len(direct)} direct news · {len(laggard)} laggards · "
+                            f"{direct} direct · {laggard_} laggards · "
                             f"{sum(1 for s in signals if s['impact_score']>=7)} high impact"
                         )
                         for sig in signals:
                             render_signal(sig)
-
-                except Exception as e:
-                    st.error(f"Scan failed: {e}")
+                except Exception as ex:
+                    st.error(f"Scan failed: {ex}")
+        else:
+            # Show price snapshot for this sector
+            st.markdown("---")
+            rows = []
+            for t in sector_tickers_list:
+                p = prices.get(t)
+                if not p: continue
+                tier = get_tier(t)
+                tc   = {1:"🟢",2:"🟡",3:"🔴"}.get(tier,"⚡")
+                rows.append({
+                    "Ticker": t,
+                    "Tier":   f"{tc} T{tier}",
+                    "Price":  f"${p['price']}",
+                    "Change": f"{'+' if p['change']>=0 else ''}{p['change']}%",
+                    "Vol":    f"{p['vol_ratio']}x",
+                })
+            if rows:
+                st.dataframe(pd.DataFrame(rows), use_container_width=True,
+                             hide_index=True, height=300)
 
 # ── LAGGARDS TAB ──────────────────────────────────────────────────────────────
 with tab_lag:
-    st.markdown("#### Stocks lagging their theme leaders — pure price math, no API needed")
+    st.markdown("#### ⏳ Laggards — stocks lagging their sector leaders")
+    st.markdown("<span style='color:#2a4560;font-size:12px'>Pure price math, no API cost — "
+                "updates automatically with prices</span>", unsafe_allow_html=True)
     if not laggards:
-        st.info("No laggards right now — theme leaders need to move >2% to trigger laggard detection. Check back when the market is moving.")
+        st.info("No laggards right now — sector leaders need >2% move to trigger detection.")
     else:
-        st.success(f"✓ {len(laggards)} laggards identified from price data alone")
-        for lag in laggards[:max_signals]:
-            render_signal(lag)
+        st.success(f"✓ {len(laggards)} laggards across all sectors")
+        # Group by sector
+        by_sector = {}
+        for l in laggards[:max_signals]:
+            sk = l.get("sector", get_sector(l["ticker"])[0])
+            by_sector.setdefault(sk, []).append(l)
+        for sk, lags in by_sector.items():
+            sv = SECTORS.get(sk, {})
+            st.markdown(f"**{sv.get('icon','')} {sv.get('label',sk)}**")
+            for lag in lags:
+                render_signal(lag)
 
 # ── EARNINGS TAB ──────────────────────────────────────────────────────────────
 with tab_earn:
-    st.markdown("#### Pre-earnings setups — Claude searches calendar + scores beat signals")
+    st.markdown("#### 📅 Pre-Earnings Setups")
+    st.markdown("<span style='color:#2a4560;font-size:12px'>Real dates from Finnhub · "
+                "Claude scores beat probability · no web search</span>",
+                unsafe_allow_html=True)
     if not anthropic_key:
-        st.warning("Add your Anthropic API key in the sidebar")
+        st.warning("Add Anthropic API key in sidebar")
+    elif not finnhub_key:
+        st.warning("Add Finnhub API key in sidebar — needed for earnings calendar")
     else:
-        if st.button("⟳  SCAN EARNINGS CALENDAR"):
-            with st.spinner("Searching earnings calendar + scoring setups…"):
+        if st.button("⟳  SCAN EARNINGS CALENDAR", use_container_width=True):
+            with st.spinner("Fetching real earnings dates from Finnhub…"):
                 try:
                     client  = anthropic.Anthropic(api_key=anthropic_key)
                     setups  = scan_earnings_with_claude(prices, client, finnhub_key)
-                    setups  = [s for s in setups if s["tier"] in allowed_tiers]
                     if not setups:
-                        st.info("No strong pre-earnings setups found in the next 10 days for tech stocks.")
+                        st.info("No upcoming earnings in next 14 days for watched stocks.")
                     else:
-                        st.success(f"✓ {len(setups)} pre-earnings setups")
+                        # Group by sector
+                        by_sector_e = {}
                         for s in setups:
-                            render_earnings_setup(s)
-                except Exception as e:
-                    st.error(f"Earnings scan failed: {e}")
+                            sk = get_sector(s["ticker"])[0]
+                            by_sector_e.setdefault(sk, []).append(s)
+                        st.success(f"✓ {len(setups)} pre-earnings setups across "
+                                   f"{len(by_sector_e)} sectors")
+                        for sk, items in by_sector_e.items():
+                            sv = SECTORS.get(sk,{})
+                            st.markdown(f"**{sv.get('icon','')} {sv.get('label',sk)}**")
+                            for item in items:
+                                render_earnings_setup(item)
+                except Exception as ex:
+                    st.error(f"Earnings scan failed: {ex}")
         else:
-            st.markdown("""<div style="background:#080f1a;border:1px solid #0e1e35;border-radius:12px;
-                padding:20px;font-size:13px;color:#2a4560;line-height:2.2">
-                <div style="font-weight:700;color:#e2e8f0;margin-bottom:10px">What Claude checks:</div>
-                ✓ Earnings dates in next 10 days for all watched tech stocks<br>
-                ✓ Sector peer read-through (did AI/cloud peers already beat?)<br>
-                ✓ Price movement — is it already priced in?<br>
-                ✓ Analyst upgrade activity last 2 weeks<br>
-                ✓ Supply chain + partner signals<br>
+            st.markdown("""<div style="background:#080f1a;border:1px solid #0e1e35;
+                border-radius:12px;padding:20px;font-size:13px;color:#2a4560;line-height:2.2">
+                <div style="font-weight:700;color:#e2e8f0;margin-bottom:10px">What this checks:</div>
+                ✓ Real earnings dates from Finnhub (no hallucination)<br>
+                ✓ Sector peer read-through across all 4 sectors<br>
+                ✓ Price action — is the move already priced in?<br>
+                ✓ Analyst upgrade activity<br>
+                ✓ Supply chain and partner signals<br>
                 ✓ Pre-announcement silence check
             </div>""", unsafe_allow_html=True)
 
-# ── PRICES TAB ────────────────────────────────────────────────────────────────
-with tab_prices:
-    st.markdown("#### Live prices — tech universe")
-    theme_sel = st.selectbox("Theme:", ["ALL"] + [
-        f"{v['icon']} {v['label']}" for v in UNIVERSE.values()
-    ])
-    tier_sel = st.radio("Tier:", ["All","T1 only","T1+T2"], horizontal=True)
-
-    filtered = ALL_TICKERS
-    if theme_sel != "ALL":
-        icon = theme_sel.split(" ")[0]
-        for v in UNIVERSE.values():
-            if v["icon"] == icon:
-                filtered = v["tier1"] + v["tier2"] + v["tier3"]
-                break
-    if tier_sel == "T1 only":
-        filtered = [t for t in filtered if get_tier(t) == 1]
-    elif tier_sel == "T1+T2":
-        filtered = [t for t in filtered if get_tier(t) <= 2]
-
-    rows = []
-    for t in dict.fromkeys(filtered):  # preserve order, dedup
-        p = prices.get(t)
-        if not p: continue
-        tier = get_tier(t)
-        tk, tv = get_theme(t)
-        rows.append({
-            "Ticker":  t,
-            "Tier":    f"T{tier}",
-            "Theme":   tv["icon"] + " " + tv["label"],
-            "Price":   f"${p['price']}",
-            "Change":  f"{'+' if p['change']>=0 else ''}{p['change']}%",
-            "Volume":  f"{p['vol_ratio']}x avg",
-            "Prev":    f"${p['prev']}",
-        })
-
-    if rows:
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
-    else:
-        st.info("No price data yet")
-
 # ── UNIVERSE TAB ──────────────────────────────────────────────────────────────
 with tab_universe:
-    st.markdown("#### 🌐 Dynamic Stock Universe")
+    st.markdown("#### 🌐 Stock Universe — All Sectors")
     st.markdown(
-        f"<span style='color:#2a4560;font-size:12px'>Total: **{len(ALL_TICKERS)} stocks** · "
-        f"{len(TIER1_FIXED)} anchors + {len(TIER2_FIXED)} growth + "
-        f"{len(TIER3_FIXED)} dynamic + {len(momentum_tickers)} momentum picks</span>",
+        f"<span style='color:#2a4560;font-size:12px'>"
+        f"Total: **{len(ALL_TICKERS)} stocks** across "
+        f"**{len(SECTORS)} sectors** · {len(momentum_tickers)} momentum picks</span>",
         unsafe_allow_html=True)
-    st.markdown("---")
 
-    st.markdown("### 🟢 Tier 1 — Anchor Stocks")
-    st.caption("Always scanned · Mega cap · Safest · $500 position")
-    t1_rows = [{"Ticker":t,"Price":f"${prices.get(t,{}).get('price','—')}",
-                "Change":f"{'+' if prices.get(t,{}).get('change',0)>=0 else ''}{prices.get(t,{}).get('change','—')}%",
-                "Vol":f"{prices.get(t,{}).get('vol_ratio','—')}x","Stop":"-3%","Target":"+5%","Size":"$500"}
-               for t in TIER1_FIXED]
-    st.dataframe(pd.DataFrame(t1_rows), use_container_width=True, hide_index=True)
+    for sector_key, sector_data in SECTORS.items():
+        with st.expander(f"{sector_data['icon']} {sector_data['label']} "
+                         f"({len(SECTOR_TICKERS[sector_key])} stocks)", expanded=False):
+            rows = []
+            for tier_num, tier_key in [(1,"tier1"),(2,"tier2"),(3,"tier3")]:
+                for t in sector_data[tier_key]:
+                    p = prices.get(t,{})
+                    tc = {1:"🟢",2:"🟡",3:"🔴"}.get(tier_num,"⚡")
+                    rows.append({
+                        "Ticker": t,
+                        "Tier":   f"{tc} T{tier_num}",
+                        "Price":  f"${p.get('price','—')}",
+                        "Change": f"{'+' if p.get('change',0)>=0 else ''}{p.get('change','—')}%",
+                        "Vol":    f"{p.get('vol_ratio','—')}x",
+                        "Size":   RISK[tier_num]["size"],
+                    })
+            if rows:
+                st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
-    st.markdown("### 🟡 Tier 2 — Growth Stocks")
-    st.caption("S&P 500 tech · Strong fundamentals · $375 position")
-    t2_rows = [{"Ticker":t,"Theme":get_theme(t)[1]["icon"]+" "+get_theme(t)[1]["label"],
-                "Price":f"${prices.get(t,{}).get('price','—')}",
-                "Change":f"{'+' if prices.get(t,{}).get('change',0)>=0 else ''}{prices.get(t,{}).get('change','—')}%",
-                "Vol":f"{prices.get(t,{}).get('vol_ratio','—')}x","Size":"$375"}
-               for t in TIER2_FIXED]
-    st.dataframe(pd.DataFrame(t2_rows), use_container_width=True, hide_index=True)
-
-    st.markdown("### 🔴 Tier 3 — Dynamic Picks")
-    st.caption("Higher risk · Smaller cap · $250 position")
-    t3_rows = [{"Ticker":t,"Theme":get_theme(t)[1]["icon"]+" "+get_theme(t)[1]["label"],
-                "Price":f"${prices.get(t,{}).get('price','—')}",
-                "Change":f"{'+' if prices.get(t,{}).get('change',0)>=0 else ''}{prices.get(t,{}).get('change','—')}%",
-                "Vol":f"{prices.get(t,{}).get('vol_ratio','—')}x","Size":"$250"}
-               for t in TIER3_FIXED]
-    st.dataframe(pd.DataFrame(t3_rows), use_container_width=True, hide_index=True)
-
-    st.markdown("### ⚡ Momentum Picks — This Week's Movers")
-    st.caption("Auto-detected · 30d momentum >8% · Volume 1.2x+ · Refreshed hourly · $150 max")
+    # Momentum picks
+    st.markdown("### ⚡ Momentum Picks This Week")
     if not momentum_picks:
         st.info("No momentum picks this week — all candidates below threshold.")
     else:
-        mom_rows = [{"Ticker":m["ticker"],"30d Move":f"+{m['mom_30d']}%",
-                     "Vol Ratio":f"{m['vol_ratio']}x",
-                     "Price":f"${prices.get(m['ticker'],{}).get('price',m['price'])}",
-                     "Today":f"{'+' if prices.get(m['ticker'],{}).get('change',0)>=0 else ''}{prices.get(m['ticker'],{}).get('change','—')}%",
-                     "Why added":m["reason"],"Size":"$150"}
-                    for m in momentum_picks]
+        mom_rows = [{
+            "Ticker":    m["ticker"],
+            "30d Move":  f"+{m['mom_30d']}%",
+            "Vol Ratio": f"{m['vol_ratio']}x",
+            "Price":     f"${prices.get(m['ticker'],{}).get('price', m['price'])}",
+            "Today":     f"{'+' if prices.get(m['ticker'],{}).get('change',0)>=0 else ''}"
+                         f"{prices.get(m['ticker'],{}).get('change','—')}%",
+            "Reason":    m["reason"],
+            "Size":      "$150",
+        } for m in momentum_picks]
         st.dataframe(pd.DataFrame(mom_rows), use_container_width=True, hide_index=True)
         st.caption("⚠ Momentum picks are speculative — always use stop-losses")
 
-    st.markdown("---")
+    # Stats
     c1,c2,c3,c4 = st.columns(4)
-    c1.metric("Total Universe",  len(ALL_TICKERS))
-    c2.metric("With Live Price", len(prices))
+    c1.metric("Total Stocks",    len(ALL_TICKERS))
+    c2.metric("Live Prices",     len(prices))
     c3.metric("Momentum Picks",  len(momentum_picks))
-    c4.metric("Themes Covered",  len(UNIVERSE))
-
-    st.markdown("""
-<div style="background:#080f1a;border:1px solid #0e1e35;border-radius:10px;padding:16px;
-     margin-top:16px;font-size:12px;color:#2a4560;line-height:2.2">
-  <div style="font-weight:700;color:#c8dff0;margin-bottom:8px">How the universe is built:</div>
-  🟢 <b style="color:#c8dff0">Tier 1 Anchors</b> — 10 mega-cap tech stocks, always scanned<br>
-  🟡 <b style="color:#c8dff0">Tier 2 Growth</b> — ~45 established S&amp;P 500 tech names<br>
-  🔴 <b style="color:#c8dff0">Tier 3 Dynamic</b> — ~25 smaller quality tech picks<br>
-  ⚡ <b style="color:#c8dff0">Momentum</b> — auto-detected: &gt;8% 30d move + volume spike + market cap &gt;$2B<br>
-  📅 <b style="color:#c8dff0">Earnings week</b> — any tech stock reporting is added automatically
-</div>
-""", unsafe_allow_html=True)
+    c4.metric("Sectors",         len(SECTORS))
