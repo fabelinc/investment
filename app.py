@@ -3,282 +3,72 @@ import requests
 import yfinance as yf
 import anthropic
 import json
-import pandas as pd
-from datetime import datetime, timedelta
 
-# ── Page config ───────────────────────────────────────────────────────────────
-st.set_page_config(page_title="Tech Signal Scanner", page_icon="📡", layout="wide")
-
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&display=swap');
-html,body,[class*="css"]{font-family:'JetBrains Mono',monospace}
-.stApp{background:#03060d;color:#c8dff0}
-.block-container{padding:1.2rem 1.8rem}
-[data-testid="stSidebar"]{background:#080f1a;border-right:1px solid #0e1e35}
-[data-testid="stSidebar"] label{color:#2a4560!important;font-size:11px;letter-spacing:1px}
-[data-testid="metric-container"]{background:#080f1a;border:1px solid #0e1e35;border-radius:10px;padding:10px 14px}
-[data-testid="stMetricValue"]{color:#c8dff0!important;font-family:'JetBrains Mono',monospace!important}
-[data-testid="stMetricLabel"]{color:#2a4560!important;font-size:10px!important;letter-spacing:2px;text-transform:uppercase}
-.stButton>button{background:#0e1e35;color:#38bdf8;border:1px solid #38bdf844;border-radius:8px;font-family:'JetBrains Mono',monospace;font-weight:700;letter-spacing:1px;width:100%}
-.stButton>button:hover{background:#38bdf818;border-color:#38bdf8}
-.stTabs [data-baseweb="tab-list"]{background:#080f1a;border-bottom:1px solid #0e1e35}
-.stTabs [data-baseweb="tab"]{color:#2a4560;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px}
-.stTabs [aria-selected="true"]{color:#38bdf8!important;border-bottom:2px solid #38bdf8!important}
-.streamlit-expanderHeader{background:#080f1a!important;color:#2a4560!important;border:1px solid #0e1e35!important;border-radius:8px!important}
-hr{border-color:#0e1e35}
-</style>
-""", unsafe_allow_html=True)
-
-# ── Universe definition ──────────────────────────────────────────────────────
-
-SECTORS = {
-    "TECH": {
-        "label":   "Tech / AI / Cloud / Cyber",
-        "icon":    "💻",
-        "color":   "#38bdf8",
-        "tab":     "💻 TECH",
-        "themes": {
-            "AI_CHIPS":   {"label":"AI & Semiconductors","icon":"🤖","color":"#a78bfa",
-                           "leaders":["NVDA","AMD","MSFT"],
-                           "tier1":["NVDA","MSFT","GOOGL","AMZN","META"],
-                           "tier2":["AMD","AVGO","QCOM","ARM","TSM","MU","AMAT","SMCI","MRVL"],
-                           "tier3":["AI","SOUN","IONQ","LRCX","KLAC"]},
-            "CLOUD_SAAS": {"label":"Cloud & SaaS","icon":"☁️","color":"#38bdf8",
-                           "leaders":["MSFT","AMZN","GOOGL"],
-                           "tier1":["MSFT","AMZN","GOOGL","ORCL","ADBE"],
-                           "tier2":["CRM","NOW","SNOW","DDOG","NET","WDAY","VEEV","GTLB"],
-                           "tier3":["MDB","CFLT","ESTC","DOMO"]},
-            "CYBER":      {"label":"Cybersecurity","icon":"🔒","color":"#e879f9",
-                           "leaders":["PANW","CRWD"],
-                           "tier1":["PANW","MSFT"],
-                           "tier2":["CRWD","ZS","FTNT","OKTA","S"],
-                           "tier3":["TENB","QLYS"]},
-            "BIG_TECH":   {"label":"Big Tech","icon":"📱","color":"#4ade80",
-                           "leaders":["AAPL","MSFT","GOOGL"],
-                           "tier1":["AAPL","MSFT","GOOGL","AMZN","META","NFLX","TSLA"],
-                           "tier2":["UBER","SHOP","PLTR","APP","RBLX","ABNB","ORCL"],
-                           "tier3":["DELL","HPQ","HPE","INTC","CSCO","ANET"]},
-        },
-        "tier1": ["NVDA","AAPL","MSFT","GOOGL","AMZN","META","TSLA","ORCL","NFLX","ADBE"],
-        "tier2": ["AMD","AVGO","QCOM","ARM","TSM","MU","AMAT","LRCX","KLAC","MRVL","SMCI",
-                  "CRM","NOW","SNOW","DDOG","NET","WDAY","VEEV","GTLB",
-                  "PANW","CRWD","FTNT","ZS","OKTA","S",
-                  "UBER","SHOP","PLTR","APP","RBLX","ABNB",
-                  "ANET","CSCO","DELL","HPE"],
-        "tier3": ["AI","SOUN","IONQ","MDB","CFLT","ESTC","TENB","QLYS","HPQ","INTC"],
-    },
-
-    "HEALTHCARE": {
-        "label":   "Healthcare & Biotech",
-        "icon":    "💊",
-        "color":   "#f87171",
-        "tab":     "💊 HEALTH",
-        "themes": {
-            "PHARMA":  {"label":"Pharma & Biotech","icon":"💉","color":"#f87171",
-                        "leaders":["LLY","JNJ"],
-                        "tier1":["LLY","JNJ","ABBV","MRK","PFE"],
-                        "tier2":["AMGN","BMY","GILD","REGN","VRTX","BIIB"],
-                        "tier3":["MRNA","BNTX","SGEN","ALNY","BEAM"]},
-            "MEDTECH": {"label":"Medical Devices","icon":"🔬","color":"#fb923c",
-                        "leaders":["ISRG","MDT"],
-                        "tier1":["ISRG","MDT","ABT","BSX","EW"],
-                        "tier2":["ZBH","SYK","BDX","HOLX","DXCM"],
-                        "tier3":["INSP","TMDX","SWAV"]},
-            "MANAGED": {"label":"Health Insurance","icon":"🏥","color":"#fbbf24",
-                        "leaders":["UNH","CVS"],
-                        "tier1":["UNH","CVS","CI","ELV","HUM"],
-                        "tier2":["MOH","CNC","HCA"],
-                        "tier3":[]},
-        },
-        "tier1": ["LLY","JNJ","ABBV","MRK","UNH","PFE","CVS","ISRG","MDT","ABT"],
-        "tier2": ["AMGN","BMY","GILD","REGN","VRTX","BSX","EW","CI","ELV","HUM",
-                  "ZBH","SYK","BDX","DXCM","HCA","MOH"],
-        "tier3": ["MRNA","BNTX","ALNY","BEAM","INSP","HOLX"],
-    },
-
-    "FINANCIALS": {
-        "label":   "Financials",
-        "icon":    "💳",
-        "color":   "#34d399",
-        "tab":     "💳 FINANCE",
-        "themes": {
-            "PAYMENTS": {"label":"Payments & Fintech","icon":"💳","color":"#34d399",
-                         "leaders":["V","MA"],
-                         "tier1":["V","MA"],
-                         "tier2":["AXP","PYPL","FIS","FISV","GPN"],
-                         "tier3":["SQ","AFRM","SOFI","NU"]},
-            "BANKS":    {"label":"Banks & Asset Mgmt","icon":"🏦","color":"#4ade80",
-                         "leaders":["JPM","GS"],
-                         "tier1":["JPM","BAC","GS","MS","WFC"],
-                         "tier2":["BLK","SCHW","BX","KKR","AMP"],
-                         "tier3":["ALLY","COIN","HOOD"]},
-            "INSURANCE":{"label":"Insurance","icon":"🛡","color":"#a3e635",
-                         "leaders":["BRK-B","PGR"],
-                         "tier1":["BRK-B","PGR","ALL","TRV"],
-                         "tier2":["AON","MMC","MET","PRU"],
-                         "tier3":[]},
-        },
-        "tier1": ["V","MA","JPM","BAC","GS","MS","BRK-B","PGR","BLK","WFC"],
-        "tier2": ["AXP","PYPL","FIS","FISV","SCHW","BX","KKR","AON","MMC","ALL","TRV"],
-        "tier3": ["SQ","AFRM","SOFI","NU","COIN","HOOD","ALLY"],
-    },
-
-    "CONSUMER": {
-        "label":   "Consumer Staples",
-        "icon":    "🛒",
-        "color":   "#fbbf24",
-        "tab":     "🛒 CONSUMER",
-        "themes": {
-            "STAPLES":  {"label":"Staples & Retail","icon":"🛒","color":"#fbbf24",
-                         "leaders":["WMT","COST"],
-                         "tier1":["WMT","COST","AMZN","HD","TGT"],
-                         "tier2":["LOW","DG","DLTR","KR","SYY"],
-                         "tier3":["FIVE","OLLI","GO"]},
-            "FOOD_BEV": {"label":"Food & Beverage","icon":"🥤","color":"#fb923c",
-                         "leaders":["KO","PEP"],
-                         "tier1":["KO","PEP","MDLZ","GIS","K"],
-                         "tier2":["HSY","MKC","SJM","CAG","CPB"],
-                         "tier3":[]},
-            "HOUSEHOLD":{"label":"Household & Personal","icon":"🧴","color":"#a78bfa",
-                         "leaders":["PG","CL"],
-                         "tier1":["PG","CL","KMB","CHD","EL"],
-                         "tier2":["COTY","SPB","HRL"],
-                         "tier3":[]},
-            "DINING":   {"label":"Restaurants & Dining","icon":"🍔","color":"#f97316",
-                         "leaders":["MCD","SBUX"],
-                         "tier1":["MCD","SBUX","YUM","CMG"],
-                         "tier2":["DPZ","QSR","DNUT","SHAK"],
-                         "tier3":[]},
-        },
-        "tier1": ["WMT","COST","KO","PEP","PG","MCD","SBUX","HD","TGT","CL"],
-        "tier2": ["LOW","DG","DLTR","KR","MDLZ","GIS","CMG","YUM","KMB","HSY","CHD"],
-        "tier3": ["FIVE","OLLI","COTY","DPZ","SHAK","HRL"],
-    },
-}
-
-# Flat lists per sector for scanning
-SECTOR_TICKERS = {
-    k: list(dict.fromkeys(v["tier1"] + v["tier2"] + v["tier3"]))
-    for k, v in SECTORS.items()
-}
-
-# All tickers across all sectors (deduped)
-ALL_TICKERS_FIXED = list(dict.fromkeys(
-    t for s in SECTORS.values()
-    for t in s["tier1"] + s["tier2"] + s["tier3"]
-))
-
-# Keep UNIVERSE alias for existing theme-based code
-UNIVERSE = {}
-for sector_data in SECTORS.values():
-    UNIVERSE.update(sector_data.get("themes", {}))
-
-RISK = {
-    1: {"stop":3,  "target":5,  "size":"$500",  "label":"🟢 TIER 1 · ANCHOR"},
-    2: {"stop":4,  "target":8,  "size":"$375",  "label":"🟡 TIER 2 · GROWTH"},
-    3: {"stop":5,  "target":12, "size":"$250",  "label":"🔴 TIER 3 · DYNAMIC"},
-    4: {"stop":6,  "target":15, "size":"$150",  "label":"⚡ MOMENTUM"},
-}
-
-def get_tier(ticker):
-    for s in SECTORS.values():
-        if ticker in s["tier1"]: return 1
-        if ticker in s["tier2"]: return 2
-        if ticker in s["tier3"]: return 3
-    return 4
-
-def get_sector(ticker):
-    for k, s in SECTORS.items():
-        if ticker in s["tier1"]+s["tier2"]+s["tier3"]:
-            return k, s
-    return "TECH", SECTORS["TECH"]
-
-def get_theme(ticker):
-    for k, v in UNIVERSE.items():
-        if ticker in v.get("tier1",[])+v.get("tier2",[])+v.get("tier3",[]):
-            return k, v
-    sk, sv = get_sector(ticker)
-    themes = sv.get("themes", {})
-    if themes:
-        first_key = list(themes.keys())[0]
-        return first_key, themes[first_key]
-    return "BIG_TECH", UNIVERSE.get("BIG_TECH", {"label":"Tech","icon":"💻","color":"#38bdf8"})
-
-# ── Dynamic universe builder ───────────────────────────────────────────────────
-@st.cache_data(ttl=3600)  # refresh every hour
-def build_dynamic_universe():
-    """
-    Fetches momentum movers to expand beyond fixed list.
-    Returns dict with momentum picks and their rationale.
-    """
-    momentum = []
-
-    # Candidate pool — broader Nasdaq tech names worth monitoring
-    candidates = [
-        # Recent AI/tech momentum names
-        "PLTR","APP","RDDT","HOOD","COIN","MSTR","LUNR","RKLB",
-        "ACHR","JOBY","LILM","BLDE","EVTL",
-        # Semis & hardware candidates
-        "ONTO","FORM","AMKR","COHU","ACLS","CAMT","AMBA",
-        # SaaS candidates
-        "BILL","FRSH","PCTY","PAYC","HUBS","ZI","BOX","DBX",
-        # Cyber candidates
-        "CYBR","VRNS","QLYS","SAIL","DEEP","RPD",
-        # Storage / data
-        "PSTG","NCNO","CLBT",
-    ]
-    # Remove any already in fixed universe
-    candidates = [c for c in candidates if c not in set(ALL_TICKERS_FIXED)]
-
+def clean_json_response(raw):
+    import re
+    text = raw.replace("```json","").replace("```","").strip()
+    obj_s, obj_e = text.find("{"), text.rfind("}")
+    arr_s, arr_e = text.find("["), text.rfind("]")
+    if obj_s == -1 and arr_s == -1:
+        raise ValueError("No JSON found: " + text[:150])
+    if obj_s != -1 and (arr_s == -1 or obj_s < arr_s):
+        s, e = obj_s, obj_e
+    else:
+        s, e = arr_s, arr_e
+    if e <= s:
+        raise ValueError("Malformed JSON: " + text[:150])
+    text = text[s:e+1]
+    # Fix 1: trailing commas
+    text = re.sub(r",\s*([}\]])", r"\1", text)
+    # Fix 2: control characters
+    text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", " ", text)
+    # Try direct parse
     try:
-        data = yf.download(
-            " ".join(candidates), period="30d",
-            interval="1d", progress=False, auto_adjust=True
-        )
-        closes  = data["Close"]
-        volumes = data["Volume"]
-
-        for t in candidates:
-            try:
-                c_series = closes[t].dropna()
-                v_series = volumes[t].dropna()
-                if len(c_series) < 10:
-                    continue
-
-                price     = float(c_series.iloc[-1])
-                price_30d = float(c_series.iloc[0])
-                mom_30d   = round((price - price_30d) / price_30d * 100, 1)
-
-                avg_vol   = float(v_series.iloc[:-5].mean())
-                rec_vol   = float(v_series.iloc[-5:].mean())
-                vol_ratio = round(rec_vol / avg_vol, 1) if avg_vol else 1.0
-
-                # Safety filters
-                if price < 3:        continue   # no penny stocks
-                if mom_30d < 8:      continue   # must have momentum
-                if vol_ratio < 1.2:  continue   # must have volume pickup
-
-                momentum.append({
-                    "ticker":    t,
-                    "price":     round(price, 2),
-                    "mom_30d":   mom_30d,
-                    "vol_ratio": vol_ratio,
-                    "reason":    f"+{mom_30d}% in 30 days, volume {vol_ratio}x avg",
-                })
-            except:
-                pass
+        return json.loads(text)
     except:
         pass
+    # Fix 3: escape literal newlines inside strings
+    result = []
+    in_string = False
+    i = 0
+    while i < len(text):
+        c = text[i]
+        if c == '"' and (i == 0 or text[i-1] != '\\'):
+            in_string = not in_string
+            result.append(c)
+        elif in_string and c == '\n':
+            result.append('\\n')
+        elif in_string and c == '\r':
+            result.append('\\r')
+        elif in_string and c == '\t':
+            result.append('\\t')
+        else:
+            result.append(c)
+        i += 1
+    text = "".join(result)
+    text = re.sub(r",\s*([}\]])", r"\1", text)
+    try:
+        return json.loads(text)
+    except:
+        pass
+    # Fix 4: truncate to last complete signal
+    sig_s = text.find('"signals"')
+    if sig_s != -1:
+        arr_start = text.find("[", sig_s)
+        if arr_start != -1:
+            last_obj = text.rfind("},")
+            if last_obj > arr_start:
+                candidate = text[arr_start:last_obj+1] + "]"
+                candidate = re.sub(r",\s*([}\]])", r"\1", candidate)
+                try:
+                    sigs = json.loads(candidate)
+                    return {"signals": sigs, "marketSummary": ""}
+                except:
+                    pass
+    raise ValueError("JSON parse failed. Preview: " + text[:200])
 
-    # Sort by momentum score (momentum * volume)
-    momentum.sort(key=lambda x: x["mom_30d"] * x["vol_ratio"], reverse=True)
-    return momentum[:15]  # top 15 momentum picks
 
-# ── Live prices via yfinance ───────────────────────────────────────────────────
 
-# ── Free RSS news fetch (no API cost) ─────────────────────────────────────────
-@st.cache_data(ttl=600)
 def fetch_rss_news(tickers):
     """
     Fetch real financial news from free RSS feeds.
@@ -484,12 +274,7 @@ Return ONLY raw JSON object, start with {{ immediately:
     )
 
     raw = "".join(b.text for b in message.content if hasattr(b, "text")).strip()
-    raw = raw.replace("```json","").replace("```","").strip()
-    s2, e2 = raw.find("{"), raw.rfind("}")
-    if s2 == -1 or e2 == -1:
-        raise ValueError("No JSON in response: " + raw[:150])
-
-    result = json.loads(raw[s2:e2+1])
+    result = clean_json_response(raw)
 
     # Enrich + dedup
     seen_tickers = set()
@@ -1187,12 +972,7 @@ Return ONLY raw JSON object, start with {{ immediately:
     )
 
     raw = "".join(b.text for b in message.content if hasattr(b,"text")).strip()
-    raw = raw.replace("```json","").replace("```","").strip()
-    s, e = raw.find("{"), raw.rfind("}")
-    if s == -1 or e == -1:
-        raise ValueError("No JSON: " + raw[:150])
-
-    result = json.loads(raw[s:e+1])
+    result = clean_json_response(raw)
 
     seen = set()
     enriched = []
