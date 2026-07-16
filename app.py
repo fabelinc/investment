@@ -848,6 +848,67 @@ Go to: App → Settings → Secrets
 tier_map = {"Tier 1 only":[1], "Tier 1+2":[1,2], "All tiers":[1,2,3]}
 allowed_tiers = tier_map[min_tier]
 
+# ── Dynamic universe builder ─────────────────────────────────────────────────
+@st.cache_data(ttl=3600)
+def build_dynamic_universe():
+    """
+    Scans candidate stocks not in the fixed universe.
+    Adds any with strong 30-day momentum + volume spike.
+    Refreshes every hour. Safety filters: price>$3, market movement.
+    """
+    candidates = [
+        # AI/tech momentum names
+        "PLTR","APP","RDDT","HOOD","COIN","MSTR","RKLB","ACHR",
+        # Semis candidates
+        "ONTO","FORM","AMKR","COHU","ACLS","CAMT","AMBA",
+        # SaaS candidates
+        "BILL","FRSH","PCTY","PAYC","HUBS","ZI","BOX","DBX",
+        # Cyber candidates
+        "CYBR","VRNS","RPD",
+        # Healthcare momentum
+        "HIMS","RXRX","NVAX","TDOC","ACCD",
+        # Fintech momentum
+        "AFRM","SOFI","NU","OPEN","UWMC",
+    ]
+    # Remove any already in fixed universe
+    fixed_set  = set(ALL_TICKERS_FIXED)
+    candidates = [c for c in candidates if c not in fixed_set]
+    momentum   = []
+    try:
+        data    = yf.download(" ".join(candidates), period="30d",
+                              interval="1d", progress=False, auto_adjust=True)
+        closes  = data.get("Close",  pd.DataFrame())
+        volumes = data.get("Volume", pd.DataFrame())
+        for t in candidates:
+            try:
+                c = closes[t].dropna() if t in closes.columns else pd.Series()
+                v = volumes[t].dropna() if t in volumes.columns else pd.Series()
+                if len(c) < 10:
+                    continue
+                price     = float(c.iloc[-1])
+                price_30d = float(c.iloc[0])
+                if price < 3:
+                    continue
+                mom_30d   = round((price - price_30d) / price_30d * 100, 1)
+                avg_vol   = float(v.iloc[:-5].mean()) if len(v) > 5 else 0
+                rec_vol   = float(v.iloc[-5:].mean()) if len(v) >= 5 else 0
+                vol_ratio = round(rec_vol / avg_vol, 1) if avg_vol > 0 else 1.0
+                if mom_30d < 8 or vol_ratio < 1.2:
+                    continue
+                momentum.append({
+                    "ticker":    t,
+                    "price":     round(price, 2),
+                    "mom_30d":   mom_30d,
+                    "vol_ratio": vol_ratio,
+                    "reason":    f"+{mom_30d}% in 30 days, vol {vol_ratio}x avg",
+                })
+            except:
+                pass
+    except:
+        pass
+    momentum.sort(key=lambda x: x["mom_30d"] * x["vol_ratio"], reverse=True)
+    return momentum[:15]
+
 # ── Build dynamic universe ────────────────────────────────────────────────────
 with st.spinner("Building dynamic universe…"):
     momentum_picks = build_dynamic_universe()
