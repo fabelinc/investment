@@ -870,9 +870,12 @@ def build_dynamic_universe():
         # Fintech momentum
         "AFRM","SOFI","NU","OPEN","UWMC",
     ]
-    # Remove any already in fixed universe
-    fixed_set  = set(ALL_TICKERS_FIXED)
-    candidates = [c for c in candidates if c not in fixed_set]
+    # Build fixed set inline — avoids dependency on global ALL_TICKERS_FIXED
+    fixed = set()
+    for s in SECTORS.values():
+        for tier in ["tier1","tier2","tier3"]:
+            fixed.update(s.get(tier,[]))
+    candidates = [c for c in candidates if c not in fixed]
     momentum   = []
     try:
         data    = yf.download(" ".join(candidates), period="30d",
