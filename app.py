@@ -33,25 +33,37 @@ DIST_STYLE = {
 # ---------------------------------------------------------------------------
 @st.cache_data(ttl=1800, show_spinner=False)
 def get_earnings_window(tickers, days_forward=14, days_back=7):
-    """Return {ticker: (earnings_date, status, days_away)} for tickers with
-    earnings in the (-days_back, +days_forward) window."""
+    """Return (window, debug_log) where window is {ticker: (earnings_date,
+    status, days_away)} for tickers with earnings in the
+    (-days_back, +days_forward) window, and debug_log records what happened
+    for every ticker so failures aren't silently swallowed."""
     today = datetime.now().date()
     window = {}
+    debug_log = []
     for t in tickers:
         try:
             edf = yf.Ticker(t).get_earnings_dates(limit=8)
             if edf is None or edf.empty:
+                debug_log.append((t, "no earnings data returned", ""))
                 continue
+            nearest = None
+            matched = False
             for dt in edf.index:
                 d = dt.date()
                 delta = (d - today).days
+                if nearest is None:
+                    nearest = d
                 if -days_back <= delta <= days_forward:
                     status = "upcoming" if delta >= 0 else "recent"
                     window[t] = (d.isoformat(), status, delta)
+                    debug_log.append((t, "matched", d.isoformat()))
+                    matched = True
                     break
-        except Exception:
-            continue
-    return window
+            if not matched:
+                debug_log.append((t, "outside window", nearest.isoformat() if nearest else "none found"))
+        except Exception as e:
+            debug_log.append((t, f"ERROR: {type(e).__name__}: {e}", ""))
+    return window, debug_log
 
 
 @st.cache_data(ttl=1800, show_spinner=False)
@@ -159,7 +171,7 @@ def get_recent_news(ticker, days=7):
 
 @st.cache_data(ttl=1800, show_spinner=False)
 def run_full_scan(tickers):
-    window = get_earnings_window(tuple(tickers))
+    window, debug_log = get_earnings_window(tuple(tickers))
     results = []
     for t, (edate, status, days_away) in window.items():
         signal, price_chg, vol_chg = get_price_volume_signal(t)
@@ -176,7 +188,7 @@ def run_full_scan(tickers):
             upgrades=up, downgrades=down, pt_note=pt_note,
             iv=iv, put_call=pc_ratio, put_call_read=pc_read, headlines=headlines,
         ))
-    return results
+    return results, debug_log
 
 
 # ---------------------------------------------------------------------------
@@ -198,11 +210,12 @@ with st.sidebar:
 
 if "results" not in st.session_state:
     st.session_state.results = None
+    st.session_state.debug_log = None
     st.session_state.scan_time = None
 
 if run_clicked:
     with st.spinner(f"Scanning {n_tickers} tickers for earnings, price/volume, analysts, options, news..."):
-        st.session_state.results = run_full_scan(SP100[:n_tickers])
+        st.session_state.results, st.session_state.debug_log = run_full_scan(SP100[:n_tickers])
         st.session_state.scan_time = datetime.now().strftime("%b %d, %I:%M %p")
 
 if st.session_state.results is None:
@@ -210,6 +223,13 @@ if st.session_state.results is None:
     st.stop()
 
 st.caption(f"Last scanned {st.session_state.scan_time} · {len(st.session_state.results)} tickers matched the earnings window")
+
+with st.expander(f"🔍 Debug log ({len(st.session_state.debug_log)} tickers checked) — open if results look wrong"):
+    error_count = sum(1 for _, status, _ in st.session_state.debug_log if status.startswith("ERROR"))
+    if error_count:
+        st.warning(f"{error_count} of {len(st.session_state.debug_log)} tickers errored out — likely yfinance rate-limiting. Try a smaller scan size or wait a few minutes.")
+    debug_df = pd.DataFrame(st.session_state.debug_log, columns=["Ticker", "Status", "Nearest earnings date found"])
+    st.dataframe(debug_df, use_container_width=True, hide_index=True)
 
 filter_choice = st.radio(
     "Filter by signal", ["All", "Selling pressure", "Accumulation", "Neutral"],
