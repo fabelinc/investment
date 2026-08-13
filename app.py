@@ -6,20 +6,32 @@ from datetime import datetime, timedelta
 st.set_page_config(page_title="Earnings Catalyst Scanner", layout="wide")
 
 # ---------------------------------------------------------------------------
-# S&P 100 constituents (as of mid-2026). This list drifts over time as index
-# membership changes — update periodically if tickers feel stale.
+# Curated universe: top tech (50), healthcare (25), financials (25) by
+# market cap / prominence. This is a fixed list rather than a live index
+# pull — update periodically if names feel stale or you want different
+# sector weights.
 # ---------------------------------------------------------------------------
-SP100 = [
-    "AAPL","ABBV","ABT","ACN","ADBE","AIG","AMD","AMGN","AMT","AMZN","AVGO",
-    "AXP","BA","BAC","BK","BKNG","BLK","BMY","BRK-B","C","CAT","CHTR","CL",
-    "CMCSA","COF","COP","COST","CRM","CSCO","CVS","CVX","DE","DHR","DIS",
-    "DOW","DUK","EMR","F","FDX","GD","GE","GILD","GM","GOOG","GOOGL","GS",
-    "HD","HON","IBM","INTC","INTU","JNJ","JPM","KHC","KO","LIN","LLY","LMT",
-    "LOW","MA","MCD","MDLZ","MDT","MET","META","MMM","MO","MRK","MS","MSFT",
-    "NEE","NFLX","NKE","NVDA","ORCL","PEP","PFE","PG","PM","PYPL","QCOM",
-    "RTX","SBUX","SO","SPG","T","TGT","TMO","TMUS","TXN","UNH","UNP","UPS",
-    "USB","V","VZ","WBA","WFC","WMT","XOM",
+TECH = [
+    "AAPL","MSFT","GOOGL","GOOG","AMZN","META","NVDA","AVGO","ORCL","CRM",
+    "ADBE","CSCO","ACN","AMD","INTC","IBM","QCOM","TXN","INTU","NOW",
+    "UBER","PANW","ADI","LRCX","KLAC","SNPS","CDNS","MU","ANET","APH",
+    "FTNT","CRWD","ADSK","MSI","ROP","TEL","HPQ","DELL","WDAY","TEAM",
+    "DDOG","ZS","MRVL","ON","GLW","NXPI","SWKS","JNPR","HPE","NTAP",
 ]
+HEALTH = [
+    "UNH","JNJ","LLY","ABBV","MRK","TMO","ABT","PFE","DHR","BMY",
+    "AMGN","ELV","CVS","MDT","ISRG","GILD","VRTX","REGN","CI","ZTS",
+    "BSX","HCA","SYK","BDX","HUM",
+]
+FINANCE = [
+    "JPM","BAC","WFC","MS","GS","C","AXP","BLK","SCHW","SPGI",
+    "CB","PGR","MMC","ICE","CME","USB","PNC","TFC","AON","MET",
+    "AIG","TRV","BK","COF","AFL",
+]
+SP100 = TECH + HEALTH + FINANCE  # kept as SP100 for minimal downstream diff
+SECTOR_MAP = {t: "Tech" for t in TECH}
+SECTOR_MAP.update({t: "Health" for t in HEALTH})
+SECTOR_MAP.update({t: "Finance" for t in FINANCE})
 
 DIST_STYLE = {
     "sell": {"label": "Selling pressure", "color": "#E5484D", "glyph": "▼"},
@@ -183,7 +195,8 @@ def run_full_scan(tickers):
         except Exception:
             name = t
         results.append(dict(
-            ticker=t, name=name, earnings_date=edate, status=status, days_away=days_away,
+            ticker=t, name=name, sector=SECTOR_MAP.get(t, "Other"),
+            earnings_date=edate, status=status, days_away=days_away,
             distribution=signal, price_5d=price_chg, volume_5d=vol_chg,
             upgrades=up, downgrades=down, pt_note=pt_note,
             iv=iv, put_call=pc_ratio, put_call_read=pc_read, headlines=headlines,
@@ -199,11 +212,12 @@ st.markdown(
     "EARNINGS CATALYST SCANNER</div>",
     unsafe_allow_html=True,
 )
-st.title("S&P 100 · Pre/Post Earnings")
+st.title("Tech · Health · Finance — Pre/Post Earnings")
 
 with st.sidebar:
     st.subheader("Scan")
-    n_tickers = st.slider("How many S&P 100 tickers to check", 10, len(SP100), 30,
+    st.caption(f"Universe: {len(TECH)} tech · {len(HEALTH)} health · {len(FINANCE)} finance ({len(SP100)} total)")
+    n_tickers = st.slider("How many tickers to check", 10, len(SP100), 40,
                            help="Checking earnings dates for more tickers takes longer.")
     run_clicked = st.button("Run scan", type="primary", use_container_width=True)
     st.caption("First scan takes a minute or two — results are cached for 30 min.")
@@ -238,7 +252,17 @@ filter_choice = st.radio(
 filter_map = {"All": None, "Selling pressure": "sell", "Accumulation": "buy", "Neutral": "neutral"}
 active_filter = filter_map[filter_choice]
 
-filtered = [s for s in st.session_state.results if active_filter is None or s["distribution"] == active_filter]
+sector_choice = st.radio(
+    "Filter by sector", ["All sectors", "Tech", "Health", "Finance"],
+    horizontal=True, label_visibility="collapsed",
+)
+active_sector = None if sector_choice == "All sectors" else sector_choice
+
+filtered = [
+    s for s in st.session_state.results
+    if (active_filter is None or s["distribution"] == active_filter)
+    and (active_sector is None or s["sector"] == active_sector)
+]
 upcoming = sorted([s for s in filtered if s["status"] == "upcoming"], key=lambda s: s["days_away"])
 recent = sorted([s for s in filtered if s["status"] == "recent"], key=lambda s: s["days_away"], reverse=True)
 
@@ -257,7 +281,7 @@ def render_card(s):
                 f"border-radius:20px;background:{badge_color}22;color:{badge_color};'>{badge_text}</span>",
                 unsafe_allow_html=True,
             )
-            st.caption(f"{s['name']} · reports {s['earnings_date']}")
+            st.caption(f"{s['name']} · {s['sector']} · reports {s['earnings_date']}")
         with top[1]:
             st.markdown(
                 f"<span style='color:{style['color']};font-size:16px;'>{style['glyph']}</span> "
