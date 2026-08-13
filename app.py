@@ -367,8 +367,14 @@ with st.sidebar:
 
     st.divider()
     st.subheader("Claude news interpretation")
-    api_key_input = st.text_input("Anthropic API key", type="password",
-                                   help="Only used for this session, never stored to disk.")
+    secret_key = st.secrets.get("ANTHROPIC_API_KEY", "")
+    if secret_key:
+        st.success("✓ Using API key from secrets.toml")
+        api_key_input = secret_key
+    else:
+        api_key_input = st.text_input("Anthropic API key", type="password",
+                                       help="Only used for this session, never stored to disk. "
+                                            "Tip: add it to .streamlit/secrets.toml to skip this.")
     use_claude = st.checkbox("Interpret news with Claude (Haiku)", value=bool(api_key_input),
                               disabled=not api_key_input)
     if use_claude:
